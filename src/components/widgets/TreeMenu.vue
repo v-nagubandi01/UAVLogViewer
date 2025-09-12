@@ -9,18 +9,17 @@
             <b-collapse :id="cleanName">
                 <template v-for="(newNode, nodeName) in nodes">
                     <tree-menu
+                        :key="cleanNodeName(nodeName)"
                         v-if="newNode.length === undefined && newNode.messages === undefined"
                         :label="nodeName"
                         :nodes="newNode"
                         :level="level+1"
                         :name="name+nodeName+ '/'"
-                        :clean-name="cleanNodeName(nodeName)"
-                        :key="cleanNodeName(nodeName)">
+                        :clean-name="cleanNodeName(nodeName)">
                     </tree-menu>
                     <li :style="{'margin-left': ''+(level+1)*15+'px'}"
                         v-if="newNode.messages !== undefined && newNode.messages.length !== undefined"
-                        class="type"
-                        :key="cleanNodeName(nodeName)">
+                        class="type">
                         <a
                             @click="openPreset(newNode.messages)"
                             class="section"

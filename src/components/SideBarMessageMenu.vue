@@ -86,9 +86,11 @@ export default {
                 'MISSION_ITEM', 'MISSION_ITEM_REACHED', 'MISSION_ACK',
                 'HOME_POSITION',
                 'STRT',
+                'ARM',
                 'FMT',
                 'PARM',
                 'MSG',
+                'MODE',
                 'FMTU',
                 'UNIT',
                 'MULT'

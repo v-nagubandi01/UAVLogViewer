@@ -38,6 +38,9 @@
             </main>
 
         </div>
+
+        <!-- Chat Interface -->
+        <ChatInterface @toggle-chat="toggleChat" />
     </div>
 </template>
 
@@ -60,6 +63,7 @@ import { MavlinkDataExtractor } from '../tools/mavlinkDataExtractor'
 import { DjiDataExtractor } from '../tools/djiDataExtractor'
 import MagFitTool from '@/components/widgets/MagFitTool.vue'
 import EkfHelperTool from '@/components/widgets/EkfHelperTool.vue'
+import ChatInterface from '@/components/ChatInterface.vue'
 import Vue from 'vue'
 
 export default {
@@ -196,6 +200,7 @@ export default {
 
             this.state.processStatus = 'Processed!'
             this.state.processDone = true
+            this.state.showChat = true
             // Change to plot view after 2 seconds so the Processed status is readable
             setTimeout(() => { this.$eventHub.$emit('set-selected', 'plot') }, 2000)
 
@@ -226,6 +231,10 @@ export default {
                 this.state.colors.push(new Color(rgba[0], rgba[1], rgba[2]))
                 // this.translucentColors.push(new Cesium.Color(rgba[0], rgba[1], rgba[2], 0.1))
             }
+        },
+
+        toggleChat () {
+            this.state.showChat = !this.state.showChat
         }
     },
     components: {
@@ -239,7 +248,8 @@ export default {
         DeviceIDViewer,
         AttitudeViewer,
         MagFitTool,
-        EkfHelperTool
+        EkfHelperTool,
+        ChatInterface
     },
     computed: {
         mapOk () {
