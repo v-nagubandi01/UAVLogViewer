@@ -1,4 +1,4 @@
-#!/home/venk_n/coding_challenge/attempt1/UAVLogViewer/backend/venv/bin/python3.11
+#!/home/venk_n/coding_challenge/attempt2/UAVLogViewer/backend/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

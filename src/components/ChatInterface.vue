@@ -45,6 +45,18 @@
             {{ formatTime(message.timestamp) }}
           </div>
         </div>
+
+        <!-- Loading indicator -->
+        <div v-if="isTyping" class="message bot loading-message">
+          <div class="message-content">
+            <div class="typing-indicator">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <span class="loading-text">Assistant is typing...</span>
+          </div>
+        </div>
       </div>
 
       <!-- Chat Input Area -->
@@ -98,7 +110,7 @@ export default {
         }
     },
     methods: {
-        sendMessage () {
+        async sendMessage () {
             if (!this.newMessage.trim() || this.isTyping) {
                 return
             }
@@ -111,22 +123,51 @@ export default {
             }
 
             this.messages.push(userMessage)
+            const messageText = this.newMessage.trim()
             this.newMessage = ''
             this.scrollToBottom()
 
-            // Simulate typing and echo response
+            // Show loading indicator
             this.isTyping = true
-            setTimeout(() => {
+
+            try {
+                // Make POST request to FastAPI backend
+                const response = await fetch('http://localhost:8001/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: messageText
+                    })
+                })
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`)
+                }
+
+                const data = await response.json()
+
                 const botMessage = {
                     id: this.messageId++,
-                    text: userMessage.text,
+                    text: data.response,
                     type: 'bot',
                     timestamp: new Date()
                 }
                 this.messages.push(botMessage)
+            } catch (error) {
+                console.error('Error sending message:', error)
+                const errorMessage = {
+                    id: this.messageId++,
+                    text: 'Sorry, I encountered an error while processing your message. Please try again.',
+                    type: 'bot',
+                    timestamp: new Date()
+                }
+                this.messages.push(errorMessage)
+            } finally {
                 this.isTyping = false
                 this.scrollToBottom()
-            }, 1000)
+            }
         },
 
         scrollToBottom () {
@@ -362,6 +403,52 @@ export default {
 
 .message.bot .message-time {
   text-align: left;
+}
+
+/* Loading indicator styles */
+.loading-message .message-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #667eea;
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-style: italic;
+  color: #666;
+  font-size: 13px;
 }
 
 .chat-input-area {
