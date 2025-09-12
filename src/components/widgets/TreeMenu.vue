@@ -19,7 +19,7 @@
                     </tree-menu>
                     <li :style="{'margin-left': ''+(level+1)*15+'px'}"
                         v-if="newNode.messages !== undefined && newNode.messages.length !== undefined"
-                        class="type">
+                        class="type" :key="'message' + nodeName">
                         <a
                             @click="openPreset(newNode.messages)"
                             class="section"

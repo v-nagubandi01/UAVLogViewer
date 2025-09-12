@@ -39,8 +39,8 @@
 
         </div>
 
-        <!-- Chat Interface -->
-        <ChatInterface @toggle-chat="toggleChat" />
+        <!-- Chat Interface - Only show for bin files -->
+        <ChatInterface v-if="state.logType === 'bin'" @toggle-chat="toggleChat" />
     </div>
 </template>
 

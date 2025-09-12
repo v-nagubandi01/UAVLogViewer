@@ -26,7 +26,7 @@
                 <i class="expand fas fa-trash" title="Remove data"></i>
               </a>
             </li>
-            <li v-if="state.expressionErrors[index]" class="error">
+            <li v-if="state.expressionErrors[index]" class="error" :key="'error' + index">
               <i class="fas fa-exclamation-circle error" :title="state.expressionErrors[index]"></i>
               {{ state.expressionErrors[index] }}
             </li>

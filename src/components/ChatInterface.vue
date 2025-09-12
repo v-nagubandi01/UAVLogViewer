@@ -86,10 +86,15 @@ export default {
     },
     computed: {
         showChat () {
-            return this.$parent.state && this.$parent.state.processDone && this.$parent.state.showChat
+            return this.$parent.state &&
+                   this.$parent.state.processDone &&
+                   this.$parent.state.showChat &&
+                   this.$parent.state.logType === 'bin'
         },
         showCollapsedButton () {
-            return this.$parent.state && this.$parent.state.processDone
+            return this.$parent.state &&
+                   this.$parent.state.processDone &&
+                   this.$parent.state.logType === 'bin'
         }
     },
     methods: {
