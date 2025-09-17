@@ -1,3 +1,22 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
+# Web server and ASGI
+fastapi
+uvicorn[standard]
+python-multipart==0.0.6
+requests==2.31.0
+
+# Pydantic for data validation (version lock removed for compatibility)
+pydantic
+
+# LangChain and related AI libraries
+langchain
+langgraph
+langchain-google-genai
+python-dotenv
+
+# Data manipulation and scientific computing
+pandas
+numpy
+
+# MAVLink for drone log processing
+pymavlink
+

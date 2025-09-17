@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /home/venk_n/coding_challenge/attempt2/UAVLogViewer/backend/venv
+set -gx VIRTUAL_ENV /home/venk_n/coding_challenge/attemp5/UAVLogViewer/backend/venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH
