@@ -1,4 +1,4 @@
-#!/home/venk_n/coding_challenge/attemp5/UAVLogViewer/backend/venv/bin/python3
+#!/home/venk_n/coding_challenge/fiver/UAVLogViewer/backend/venv/bin/python3
 
 '''
 convert a MAVLink tlog file to a MATLab mfile

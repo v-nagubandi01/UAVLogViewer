@@ -19,10 +19,10 @@ pip install -r requirements.txt
 
 Start the development server:
 ```bash
-uvicorn main:app --reload --port 3001
+uvicorn main:app --reload --port 8001
 ```
 
-The server will be available at `http://localhost:3001`
+The server will be available at `http://localhost:8001`
 
 ## API Endpoints
 
@@ -53,15 +53,38 @@ Accepts a chat message and echoes it back.
 }
 ```
 
-## Testing
+### POST /upload-data
+Accepts a `.bin` file upload and a `conversation_id`. Saves the file as `<filename>_<conversation_id>.bin` in the `conversation_data/` directory.
 
-Run the test script to verify the API is working:
-```bash
-python test_api.py
+**Form Data:**
+- `file`: The `.bin` file to upload (required)
+- `conversation_id`: The conversation ID (required)
+
+**Response (success):**
+```json
+{
+  "status": "success",
+  "message": "File saved as <filename>_<conversation_id>.bin"
+}
+```
+
+**Response (error):**
+```json
+{
+  "status": "error",
+  "message": "Only .bin files are allowed"
+}
+```
+or
+```json
+{
+  "status": "error",
+  "message": "Failed to save file: <error details>"
+}
 ```
 
 ## API Documentation
 
 Once the server is running, you can access the interactive API documentation at:
-- Swagger UI: `http://localhost:3001/docs`
-- ReDoc: `http://localhost:3001/redoc`
+- Swagger UI: `http://localhost:8001/docs`
+- ReDoc: `http://localhost:8001/redoc`

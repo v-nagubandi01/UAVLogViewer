@@ -1,4 +1,4 @@
-#!/home/venk_n/coding_challenge/attemp5/UAVLogViewer/backend/venv/bin/python3
+#!/home/venk_n/coding_challenge/fiver/UAVLogViewer/backend/venv/bin/python3
 
 '''
 fit best estimate of magnetometer offsets, diagonals, off-diagonals, cmot and scaling using WMM target

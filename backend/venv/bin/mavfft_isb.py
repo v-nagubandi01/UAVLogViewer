@@ -1,4 +1,4 @@
-#!/home/venk_n/coding_challenge/attemp5/UAVLogViewer/backend/venv/bin/python3
+#!/home/venk_n/coding_challenge/fiver/UAVLogViewer/backend/venv/bin/python3
 
 '''
 extract ISBH and ISBD messages from AP_Logging files and produce FFT plots

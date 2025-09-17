@@ -1,4 +1,4 @@
-#!/home/venk_n/coding_challenge/attemp5/UAVLogViewer/backend/venv/bin/python3
+#!/home/venk_n/coding_challenge/fiver/UAVLogViewer/backend/venv/bin/python3
 '''
 graph a MAVLink log file
 Andrew Tridgell August 2011
