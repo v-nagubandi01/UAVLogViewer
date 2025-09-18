@@ -166,6 +166,9 @@ export default {
                 this.state.logType = 'dji'
             }
             reader.readAsArrayBuffer(file)
+
+            // Start async backend upload in parallel (fire-and-forget)
+            this.uploadToBackendAsync(file)
         },
         uploadFile () {
             this.uploadStarted = true
@@ -225,6 +228,33 @@ export default {
             a.click()
             document.body.removeChild(a)
             window.URL.revokeObjectURL(url)
+        },
+        uploadToBackendAsync (file) {
+            // Only upload .bin files to backend as per backend requirements
+            if (!file.name.endsWith('.bin')) {
+                console.log('Skipping backend upload: file is not a .bin file')
+                return
+            }
+
+            // Generate a unique conversation ID (using timestamp + random)
+            const conversationId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('conversation_id', conversationId)
+
+            // Fire-and-forget async upload
+            fetch('/upload-data', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Backend upload successful:', data)
+                })
+                .catch(error => {
+                    console.log('Backend upload failed (non-blocking):', error)
+                })
         }
     },
     mounted () {

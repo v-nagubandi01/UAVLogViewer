@@ -11,18 +11,28 @@ module.exports = {
     assetsSubDirectory: 'static',
     assetsPublicPath: '/',
     proxyTable: {
+    "/chat":{
+        target:"http://localhost:8001",
+        secure:"false",
+        changeOrigin: true
+    },
+    "/upload-data":{
+        target:"http://localhost:8001",
+        secure:"false",
+        changeOrigin: true
+    },
+    "/uploaded/*":{
+        target:"http://localhost:8001",
+        secure:"false"
+    },
     "/upload/*":{
-        target:"http://localhost:8001/upload",
+        target:"http://localhost:8001",
         secure:"false"
     },
     "/eniro/*":{
-        target:"http://localhost:8001/eniro",
+        target:"http://localhost:8001",
         secure:"false"
     },
-      "/uploaded/*":{
-        target:"http://localhost:8001/uploaded",
-        secure:"false"
-      },
     },
 
     // Various Dev Server settings
