@@ -78,7 +78,9 @@ async def upload_data(
             shutil.copyfileobj(file.file, buffer)
 
         print(f"File saved successfully: {new_filename}")
-        return {"status": "success", "message": f"File saved as {new_filename}"}
+
+        res = {"status": "success", "message": f"File saved as {new_filename}"}
+        return res
 
     except Exception as e:
         print(f"Exception occurred: {e}")
