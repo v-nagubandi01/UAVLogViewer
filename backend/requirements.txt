@@ -11,7 +11,9 @@ pydantic
 langchain
 langgraph
 langchain-google-genai
+deepagents
 python-dotenv
+langgraph-cli[inmem]
 
 # Data manipulation and scientific computing
 pandas

@@ -37,34 +37,38 @@ Returns a simple status message.
 ```
 
 ### POST /chat
-Accepts a chat message and echoes it back.
+Accepts a chat message with conversation context and processes it.
 
 **Request Body:**
 ```json
 {
-  "message": "Your message here"
+  "message": "Your message here",
+  "conversationId": "uuid-string"
 }
 ```
 
 **Response:**
 ```json
 {
-  "response": "You said: Your message here"
+  "response": "## Chat Response\n\n**Conversation ID:** `uuid-string`\n\n**Your message:** Your message here\n\n### Features Available:\n- ✅ **Markdown formatting** (bold, italic, headers, lists)\n- ✅ **Code blocks** with syntax highlighting\n- ✅ **Loading indicators** during processing\n- ✅ **Error handling** with detailed messages"
 }
 ```
 
+**Note:** The response supports Markdown formatting including headers, bold/italic text, code blocks, lists, and more.
+
 ### POST /upload-data
-Accepts a `.bin` file upload and a `conversation_id`. Saves the file as `<filename>_<conversation_id>.bin` in the `conversation_data/` directory.
+Accepts a `.bin` file upload and an optional `conversation_id`. If no conversation_id is provided, generates a UUID. Saves the file as `<filename>_<conversation_id>.bin` in the `conversation_data/` directory.
 
 **Form Data:**
 - `file`: The `.bin` file to upload (required)
-- `conversation_id`: The conversation ID (required)
+- `conversation_id`: The conversation ID (optional - UUID will be generated if not provided)
 
 **Response (success):**
 ```json
 {
   "status": "success",
-  "message": "File saved as <filename>_<conversation_id>.bin"
+  "message": "File saved as <filename>_<conversation_id>.bin",
+  "conversation_id": "generated-or-provided-uuid"
 }
 ```
 

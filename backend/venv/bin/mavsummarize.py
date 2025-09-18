@@ -1,4 +1,4 @@
-#!/home/venk_n/coding_challenge/fiver/UAVLogViewer/backend/venv/bin/python3
+#!/home/venk_n/temp_temp/UAV_Try2/backend/venv/bin/python3
 
 '''
 Summarize MAVLink logs. Useful for identifying which log is of interest in a large set.

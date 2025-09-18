@@ -1,4 +1,4 @@
-#!/home/venk_n/coding_challenge/fiver/UAVLogViewer/backend/venv/bin/python3
+#!/home/venk_n/temp_temp/UAV_Try2/backend/venv/bin/python3
 
 '''
 example program to extract GPS data from a mavlink log, and create a GPX

@@ -170,33 +170,59 @@ export default {
             // Start async backend upload in parallel (fire-and-forget)
             this.uploadToBackendAsync(file)
         },
-        uploadFile () {
-            this.uploadStarted = true
-            this.transferMessage = 'Upload Done!'
-            this.uploadpercentage = 0
-            const formData = new FormData()
-            formData.append('file', this.file)
+        async uploadToBackendAsync (file) {
+            console.log('Starting upload for file:', file.name, 'Type:', file.type, 'Size:', file.size)
+            // Only accept .bin files
+            if (!file.name.endsWith('.bin')) {
+                console.log('Skipping upload: not a .bin file')
+                return
+            }
 
-            const request = new XMLHttpRequest()
-            request.onload = () => {
-                if (request.status >= 200 && request.status < 400) {
-                    this.uploadpercentage = 100
-                    this.url = request.responseText
-                } else {
-                    alert('error! ' + request.status)
-                    this.uploadpercentage = 100
-                    this.transferMessage = 'Error Uploading'
-                    console.log(request)
+            // Create new FormData for each upload
+            const formData = new FormData()
+            const conversationId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            formData.append('file', file)
+            formData.append('conversation_id', conversationId)
+
+            console.log('Uploading to /upload-data with conversation_id:', conversationId)
+
+            try {
+                // debugger
+                console.log('Making fetch request to /upload-data...')
+                const res = await fetch('/upload-data', {
+                    method: 'POST',
+                    body: formData
+                })
+                // debugger
+
+                console.log('Fetch completed. Response status:', res, 'OK:', res.ok)
+
+                if (!res.ok) {
+                    console.log('Response not OK, reading error text...')
+                    const errorText = await res.text()
+                    console.error('Response error text:', errorText)
+                    throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`)
                 }
-            }
-            request.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    this.uploadpercentage = 100 * e.loaded / e.total
+
+                console.log('Response OK, parsing JSON...')
+                const data = await res.json()
+                console.log('Upload response:', data)
+            } catch (err) {
+                console.error('Upload failed with error:', err)
+                console.error('Error type:', typeof err)
+                console.error('Error name:', err.name)
+                console.error('Error message:', err.message)
+                // Check if it's a network error
+                if (err.name === 'TypeError' && err.message.includes('fetch')) {
+                    console.error('This appears to be a network/fetch error')
+                    console.error('Possible causes:')
+                    console.error('1. Backend server not running')
+                    console.error('2. Webpack dev server proxy not working')
+                    console.error('3. CORS issue')
+                    console.error('4. Network connectivity problem')
                 }
+                console.error('Full error stack:', err.stack)
             }
-            , false)
-            request.open('POST', '/upload')
-            request.send(formData)
         },
         fixData (message) {
             if (message.name === 'GLOBAL_POSITION_INT') {
@@ -228,33 +254,6 @@ export default {
             a.click()
             document.body.removeChild(a)
             window.URL.revokeObjectURL(url)
-        },
-        uploadToBackendAsync (file) {
-            // Only upload .bin files to backend as per backend requirements
-            if (!file.name.endsWith('.bin')) {
-                console.log('Skipping backend upload: file is not a .bin file')
-                return
-            }
-
-            // Generate a unique conversation ID (using timestamp + random)
-            const conversationId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('conversation_id', conversationId)
-
-            // Fire-and-forget async upload
-            fetch('/upload-data', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Backend upload successful:', data)
-                })
-                .catch(error => {
-                    console.log('Backend upload failed (non-blocking):', error)
-                })
         }
     },
     mounted () {

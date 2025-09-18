@@ -35,7 +35,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV=/home/venk_n/coding_challenge/fiver/UAVLogViewer/backend/venv
+VIRTUAL_ENV=/home/venk_n/temp_temp/UAV_Try2/backend/venv
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
