@@ -44,6 +44,21 @@
           </div>
         </div>
 
+        <!-- Backend processing message -->
+        <div v-if="showChat && !isBackendProcessingComplete" class="message bot processing-message">
+          <div class="message-content">
+            <div class="processing-container">
+              <div class="processing-indicator">
+                <i class="fas fa-spinner fa-spin"></i>
+              </div>
+              <div class="processing-text">
+                <strong>Backend Processing</strong><br>
+                The chatbot is currently unavailable while your file is being processed. Please wait...
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Loading indicator -->
         <div v-if="isTyping" class="message bot loading-message">
           <div class="message-content">
@@ -60,21 +75,21 @@
       </div>
 
       <!-- Chat Input Area -->
-      <div class="chat-input-area">
+      <div class="chat-input-area" :class="{ 'disabled': !isChatAvailable }">
         <div class="input-group">
           <input
             v-model="newMessage"
             @keyup.enter="sendMessage"
             type="text"
-            placeholder="Type your message..."
+            :placeholder="isChatAvailable ? 'Type your message...' : 'Chat unavailable - processing file...'"
             class="chat-input"
-            :disabled="isTyping"
+            :disabled="isTyping || !isChatAvailable"
           />
           <button
             @click="sendMessage"
-            :disabled="!newMessage.trim() || isTyping"
+            :disabled="!newMessage.trim() || isTyping || !isChatAvailable"
             class="send-btn"
-            :class="{ 'loading': isTyping }"
+            :class="{ 'loading': isTyping, 'disabled': !isChatAvailable }"
           >
             <i v-if="!isTyping" class="fas fa-paper-plane"></i>
             <i v-else class="fas fa-spinner fa-spin"></i>
@@ -111,11 +126,17 @@ export default {
             return this.$parent.state &&
                    this.$parent.state.processDone &&
                    this.$parent.state.logType === 'bin'
+        },
+        isBackendProcessingComplete () {
+            return this.$parent.state && this.$parent.state.backendProcessingComplete
+        },
+        isChatAvailable () {
+            return this.showChat && this.isBackendProcessingComplete
         }
     },
     methods: {
         async sendMessage () {
-            if (!this.newMessage.trim() || this.isTyping) {
+            if (!this.newMessage.trim() || this.isTyping || !this.isChatAvailable) {
                 return
             }
 
@@ -239,14 +260,18 @@ export default {
         }
     },
     mounted () {
-    // Add welcome message
-        const welcomeMessage = {
-            id: this.messageId++,
-            text: 'Hello! I\'m your UAV log analysis assistant. How can I help you today?',
-            type: 'bot',
-            timestamp: new Date()
-        }
-        this.messages.push(welcomeMessage)
+        // Add welcome message when chat becomes available
+        this.$watch('isChatAvailable', (newValue) => {
+            if (newValue && this.messages.length === 0) {
+                const welcomeMessage = {
+                    id: this.messageId++,
+                    text: 'Hello! I\'m your UAV log analysis assistant. How can I help you today?',
+                    type: 'bot',
+                    timestamp: new Date()
+                }
+                this.messages.push(welcomeMessage)
+            }
+        }, { immediate: true })
     }
 }
 </script>
@@ -493,6 +518,30 @@ export default {
   font-size: 13px;
 }
 
+/* Processing message styles */
+.processing-message .message-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.processing-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.processing-indicator {
+  color: #667eea;
+  font-size: 16px;
+}
+
+.processing-text {
+  color: #666;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 /* Markdown content styles */
 .message-content h1,
 .message-content h2,
@@ -576,6 +625,11 @@ export default {
   border-top: 1px solid #e1e5e9;
 }
 
+.chat-input-area.disabled {
+  background: #f8f9fa;
+  opacity: 0.7;
+}
+
 .input-group {
   display: flex;
   gap: 10px;
@@ -637,6 +691,19 @@ export default {
 }
 
 .send-btn.loading:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.send-btn.disabled {
+  background: #e1e5e9;
+  color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.send-btn.disabled:hover {
   transform: none;
   box-shadow: none;
 }

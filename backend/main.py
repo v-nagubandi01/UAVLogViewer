@@ -56,6 +56,7 @@ async def chat(message_data: ChatMessage) -> Dict[str, str]:
     """
     Chat endpoint that processes messages with conversation context.
     """
+    global sessions
     print("\n\n\n\n")
     print(f"Received chat message for conversationId: {message_data.conversationId}")
     print(f"Message: {message_data.message}")
@@ -89,16 +90,17 @@ async def chat(message_data: ChatMessage) -> Dict[str, str]:
 
     response_text = result['messages'][-1].content
 
-    #To Do items are uncessary use of context which doesn't need to be stored.
-    filtered_messages = []
+    print("\n"*3)
 
-    for msg in result['messages']:
-        if isinstance(msg, ToolMessage):
-            if msg.name == "write_todos":
-                continue
-        filtered_messages.append(msg)
-    
-    state["messages"] = filtered_messages
+    print(result.keys())
+
+
+    for msg in result["messages"]:
+        print(msg.content)
+        print("==================================\n"*3)
+
+
+    sessions[message_data.conversationId] = result
 
     return {"response": response_text}
 
@@ -107,6 +109,7 @@ async def chat(message_data: ChatMessage) -> Dict[str, str]:
 async def upload_data(
     file: UploadFile = File(...), conversation_id: str = Form(...)
 ) -> Dict[str, str]:
+    global sessions
     print("Received /upload-data request")
     print(f"Conversation ID: {conversation_id}")
     print(f"Uploaded file: {file.filename}, content_type: {file.content_type}")
@@ -129,12 +132,8 @@ async def upload_data(
             tmp_file.write(file_contents)
             tmp_file_path = tmp_file.name
 
-        start_time = time.time()
         message_dfs = bin_to_dataframe_optimized(tmp_file_path)
-        duration = time.time() - start_time
-        print(f"bin_to_dataframe_optimized took {duration:.3f} seconds")
 
-        global sessions
         sessions[str(conversation_id)] = {
             "result_df": None,
             "message_dfs": message_dfs,

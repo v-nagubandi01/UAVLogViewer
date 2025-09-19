@@ -78,6 +78,8 @@ export default {
                 const urlParts = url.split('/')
                 this.state.file = urlParts[urlParts.length - 1]
             }
+            // Reset backend processing status for sample files
+            this.state.backendProcessingComplete = false
             const oReq = new XMLHttpRequest()
             console.log(`loading file from ${url}`)
 
@@ -151,6 +153,8 @@ export default {
             this.state.processStatus = 'Pre-processing...'
             this.state.processPercentage = 100
             this.file = file
+            // Reset backend processing status for new file
+            this.state.backendProcessingComplete = false
             const reader = new FileReader()
             reader.onload = function (e) {
                 const data = reader.result
@@ -211,6 +215,8 @@ export default {
                 console.log('Response OK, parsing JSON...')
                 const data = await res.json()
                 console.log('Upload response:', data)
+                // Mark backend processing as complete
+                this.state.backendProcessingComplete = true
             } catch (err) {
                 console.error('Upload failed with error:', err)
                 console.error('Error type:', typeof err)
