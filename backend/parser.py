@@ -2,6 +2,7 @@ import pandas as pd
 from pymavlink import DFReader
 import time
 
+
 def bin_to_dataframe_optimized(file_path: str) -> dict:
     """
     Optimized reader for ArduPilot/PX4 .bin logs.
@@ -32,6 +33,7 @@ def bin_to_dataframe_optimized(file_path: str) -> dict:
 
     return dfs
 
+
 def _process_batch(batch, data):
     """Helper to append batch messages to the per-type dictionary"""
     for msg in batch:
@@ -39,6 +41,7 @@ def _process_batch(batch, data):
         if msg_type not in data:
             data[msg_type] = []
         data[msg_type].append(msg.to_dict())
+
 
 if __name__ == "__main__":
     file_path = "1980-01-08 09-44-08.bin"  # <-- replace with your log
@@ -50,48 +53,3 @@ if __name__ == "__main__":
     print(dfs.keys())
 
     print(len(dfs.keys()))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

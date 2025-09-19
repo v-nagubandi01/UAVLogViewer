@@ -1,0 +1,17 @@
+[tool.ruff]
+# Exclude files or directories that contain critical prompt strings
+exclude = [
+    "prompts/*",
+    "legacy_scripts/*"
+]
+
+# Which rules Ruff should enforce; adjust as needed
+select = ["E", "F", "W"]
+ignore = []
+
+[tool.ruff.format]
+# Preserve all string quotes exactly as they are
+quote-style = "preserve"
+
+# Optional: indent style
+indent-style = "space"

@@ -10,6 +10,8 @@ from parser import bin_to_dataframe_optimized
 from deepagent import create_graph
 import tempfile
 import shutil
+from langchain_core.messages import ToolMessage
+
 
 app = FastAPI(title="UAV Log Viewer Backend", version="1.0.0")
 
@@ -22,15 +24,19 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+
 class ChatMessage(BaseModel):
     message: str
     conversationId: str
 
+
 class ChatResponse(BaseModel):
     response: str
 
+
 class UploadDataRequest(BaseModel):
     conversation_id: str
+
 
 class UploadDataResponse(BaseModel):
     status: str
@@ -43,6 +49,7 @@ sessions = {}
 @app.get("/")
 async def root():
     return {"message": "UAV Log Viewer Backend is running"}
+
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(message_data: ChatMessage) -> Dict[str, str]:
@@ -57,9 +64,10 @@ async def chat(message_data: ChatMessage) -> Dict[str, str]:
     print("current sessions keys:")
     print(sessions.keys())
 
-
     if message_data.conversationId not in sessions:
-        return {"response": "Error: Conversation ID not found. Please upload data first."}
+        return {
+            "response": "Error: Conversation ID not found. Please upload data first."
+        }
 
     agent = await create_graph()
 
@@ -68,7 +76,9 @@ async def chat(message_data: ChatMessage) -> Dict[str, str]:
 
     state = sessions[message_data.conversationId]
 
-    state["messages"] = state["messages"] + [{"role": "user", "content": message_data.message}]
+    state["messages"] = state["messages"] + [
+        {"role": "user", "content": message_data.message}
+    ]
 
     print("State messages before invoke:")
     print(state['messages'])
@@ -79,34 +89,24 @@ async def chat(message_data: ChatMessage) -> Dict[str, str]:
 
     response_text = result['messages'][-1].content
 
-    # Simulate processing time (remove this in production)
+    #To Do items are uncessary use of context which doesn't need to be stored.
+    filtered_messages = []
+
+    for msg in result['messages']:
+        if isinstance(msg, ToolMessage):
+            if msg.name == "write_todos":
+                continue
+        filtered_messages.append(msg)
     
-#     # TODO: Implement actual chat logic with conversation context
-#     # For now, return a response that demonstrates markdown support
-#     response_text = f"""## Chat Response
+    state["messages"] = filtered_messages
 
-# **Conversation ID:** `{message_data.conversationId}`
-
-# **Your message:** {message_data.message}
-
-# ### Features Available:
-# - ✅ **Markdown formatting** (bold, italic, headers, lists)
-# - ✅ **Code blocks** with syntax highlighting
-# - ✅ **Loading indicators** during processing
-# - ✅ **Error handling** with detailed messages
-
-# ### Example Code Block:
-# ```python
-# def process_message(msg, conv_id):
-#     return f"Processed: {{msg}} for {{conv_id}}"
-# ```
-
-# *This is a demo response showing markdown capabilities.*"""
-    
     return {"response": response_text}
 
+
 @app.post("/upload-data")
-async def upload_data(file: UploadFile = File(...), conversation_id: str = Form(...)) -> Dict[str, str]:
+async def upload_data(
+    file: UploadFile = File(...), conversation_id: str = Form(...)
+) -> Dict[str, str]:
     print("Received /upload-data request")
     print(f"Conversation ID: {conversation_id}")
     print(f"Uploaded file: {file.filename}, content_type: {file.content_type}")
@@ -123,7 +123,7 @@ async def upload_data(file: UploadFile = File(...), conversation_id: str = Form(
 
         # Read the uploaded file into memory
         file_contents = await file.read()  # async read
-       
+
         # Create a temporary file that provides a real file path
         with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as tmp_file:
             tmp_file.write(file_contents)
@@ -138,7 +138,7 @@ async def upload_data(file: UploadFile = File(...), conversation_id: str = Form(
         sessions[str(conversation_id)] = {
             "result_df": None,
             "message_dfs": message_dfs,
-            "messages": []
+            "messages": [],
         }
 
         print(f"File ready in temp path: {tmp_file_path}")
@@ -149,4 +149,3 @@ async def upload_data(file: UploadFile = File(...), conversation_id: str = Form(
     except Exception as e:
         print(f"Exception occurred: {e}")
         return {"status": "error", "message": f"Failed to process file: {str(e)}"}
-
