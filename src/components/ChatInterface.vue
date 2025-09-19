@@ -38,9 +38,7 @@
           :key="message.id"
           :class="['message', message.type]"
         >
-          <div class="message-content">
-            {{ message.text }}
-          </div>
+          <div class="message-content" v-html="formatMessage(message.text)"></div>
           <div class="message-time">
             {{ formatTime(message.timestamp) }}
           </div>
@@ -49,12 +47,14 @@
         <!-- Loading indicator -->
         <div v-if="isTyping" class="message bot loading-message">
           <div class="message-content">
-            <div class="typing-indicator">
-              <span></span>
-              <span></span>
-              <span></span>
+            <div class="loading-container">
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <span class="loading-text">Assistant is thinking...</span>
             </div>
-            <span class="loading-text">Assistant is typing...</span>
           </div>
         </div>
       </div>
@@ -74,8 +74,10 @@
             @click="sendMessage"
             :disabled="!newMessage.trim() || isTyping"
             class="send-btn"
+            :class="{ 'loading': isTyping }"
           >
-            <i class="fas fa-paper-plane"></i>
+            <i v-if="!isTyping" class="fas fa-paper-plane"></i>
+            <i v-else class="fas fa-spinner fa-spin"></i>
           </button>
         </div>
       </div>
@@ -85,6 +87,8 @@
 </template>
 
 <script>
+import { marked } from 'marked'
+
 export default {
     name: 'ChatInterface',
     data () {
@@ -131,16 +135,24 @@ export default {
             this.isTyping = true
 
             try {
+                // Create AbortController for timeout
+                const controller = new AbortController()
+                const timeoutId = setTimeout(() => controller.abort(), 180000)
+
                 // Make POST request to FastAPI backend
-                const response = await fetch('http://localhost:8001/chat', {
+                const response = await fetch('/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: messageText
-                    })
+                        message: messageText,
+                        conversationId: this.$parent.state.conversationId
+                    }),
+                    signal: controller.signal
                 })
+
+                clearTimeout(timeoutId)
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`)
@@ -157,9 +169,19 @@ export default {
                 this.messages.push(botMessage)
             } catch (error) {
                 console.error('Error sending message:', error)
+                let errorText = ''
+
+                if (error.name === 'AbortError') {
+                    errorText = '**Timeout Error:** The request took too long to respond.'
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorText = 'Cannot connect to the backend server. Check what port the backend is on.'
+                } else {
+                    errorText = `I got an error while processing your message.\n\n**Details:** ${error.message}\n\n`
+                }
+
                 const errorMessage = {
                     id: this.messageId++,
-                    text: 'Sorry, I encountered an error while processing your message. Please try again.',
+                    text: errorText,
                     type: 'bot',
                     timestamp: new Date()
                 }
@@ -181,6 +203,20 @@ export default {
 
         formatTime (timestamp) {
             return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        },
+
+        formatMessage (text) {
+            // Configure marked options for security and styling
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                sanitize: false, // We'll handle sanitization if needed
+                smartLists: true,
+                smartypants: true
+            })
+
+            // Convert markdown to HTML
+            return marked.parse(text)
         },
 
         toggleChat () {
@@ -412,6 +448,12 @@ export default {
   gap: 10px;
 }
 
+.loading-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .typing-indicator {
   display: flex;
   gap: 4px;
@@ -449,6 +491,83 @@ export default {
   font-style: italic;
   color: #666;
   font-size: 13px;
+}
+
+/* Markdown content styles */
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4,
+.message-content h5,
+.message-content h6 {
+  margin: 8px 0 4px 0;
+  font-weight: 600;
+  color: inherit;
+}
+
+.message-content h1 { font-size: 1.2em; }
+.message-content h2 { font-size: 1.1em; }
+.message-content h3 { font-size: 1.05em; }
+
+.message-content p {
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.message-content ul,
+.message-content ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.message-content li {
+  margin: 2px 0;
+}
+
+.message-content code {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.message-content pre {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 4px 0;
+}
+
+.message-content pre code {
+  background: none;
+  padding: 0;
+}
+
+.message-content blockquote {
+  border-left: 3px solid #667eea;
+  margin: 4px 0;
+  padding-left: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+.message-content a {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.message-content a:hover {
+  text-decoration: underline;
+}
+
+.message-content strong {
+  font-weight: 600;
+}
+
+.message-content em {
+  font-style: italic;
 }
 
 .chat-input-area {
@@ -507,6 +626,17 @@ export default {
   background: #e1e5e9;
   color: #6c757d;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.send-btn.loading {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  cursor: not-allowed;
+}
+
+.send-btn.loading:hover {
   transform: none;
   box-shadow: none;
 }

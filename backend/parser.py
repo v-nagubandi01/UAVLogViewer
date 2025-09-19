@@ -10,7 +10,7 @@ def bin_to_dataframe_optimized(file_path: str) -> dict:
     log = DFReader.DFReader_binary(file_path)
     data = {}  # store messages per type
 
-    batch_size = 5000
+    batch_size = 10000
     batch = []
 
     while True:
@@ -50,3 +50,48 @@ if __name__ == "__main__":
     print(dfs.keys())
 
     print(len(dfs.keys()))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

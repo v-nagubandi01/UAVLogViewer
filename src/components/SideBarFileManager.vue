@@ -180,9 +180,13 @@ export default {
 
             // Create new FormData for each upload
             const formData = new FormData()
-            const conversationId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            // Generate UUID for conversation_id
+            const conversationId = crypto.randomUUID()
             formData.append('file', file)
             formData.append('conversation_id', conversationId)
+
+            // Store conversation_id in state for chat interface
+            this.state.conversationId = conversationId
 
             console.log('Uploading to /upload-data with conversation_id:', conversationId)
 

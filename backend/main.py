@@ -6,6 +6,10 @@ import os
 import shutil
 import uuid
 import time
+from parser import bin_to_dataframe_optimized
+from deepagent import create_graph
+import tempfile
+import shutil
 
 app = FastAPI(title="UAV Log Viewer Backend", version="1.0.0")
 
@@ -33,6 +37,9 @@ class UploadDataResponse(BaseModel):
     message: str = ""
     conversation_id: str = ""
 
+
+sessions = {}
+
 @app.get("/")
 async def root():
     return {"message": "UAV Log Viewer Backend is running"}
@@ -42,63 +49,69 @@ async def chat(message_data: ChatMessage) -> Dict[str, str]:
     """
     Chat endpoint that processes messages with conversation context.
     """
+    print("\n\n\n\n")
     print(f"Received chat message for conversationId: {message_data.conversationId}")
     print(f"Message: {message_data.message}")
+    print(type(message_data.conversationId))
+
+    print("current sessions keys:")
+    print(sessions.keys())
+
+
+    if message_data.conversationId not in sessions:
+        return {"response": "Error: Conversation ID not found. Please upload data first."}
+
+    agent = await create_graph()
+
+    # Measure time for agent.invoke
+    start_time = time.time()
+
+    state = sessions[message_data.conversationId]
+
+    state["messages"] = state["messages"] + [{"role": "user", "content": message_data.message}]
+
+    print("State messages before invoke:")
+    print(state['messages'])
+
+    result = agent.invoke(state)
+    duration = time.time() - start_time
+    print(f"agent.invoke took {duration:.3f} seconds")
+
+    response_text = result['messages'][-1].content
 
     # Simulate processing time (remove this in production)
-    time.sleep(2)
     
-    # TODO: Implement actual chat logic with conversation context
-    # For now, return a response that demonstrates markdown support
-    response_text = f"""## Chat Response
+#     # TODO: Implement actual chat logic with conversation context
+#     # For now, return a response that demonstrates markdown support
+#     response_text = f"""## Chat Response
 
-**Conversation ID:** `{message_data.conversationId}`
+# **Conversation ID:** `{message_data.conversationId}`
 
-**Your message:** {message_data.message}
+# **Your message:** {message_data.message}
 
-### Features Available:
-- ✅ **Markdown formatting** (bold, italic, headers, lists)
-- ✅ **Code blocks** with syntax highlighting
-- ✅ **Loading indicators** during processing
-- ✅ **Error handling** with detailed messages
+# ### Features Available:
+# - ✅ **Markdown formatting** (bold, italic, headers, lists)
+# - ✅ **Code blocks** with syntax highlighting
+# - ✅ **Loading indicators** during processing
+# - ✅ **Error handling** with detailed messages
 
-### Example Code Block:
-```python
-def process_message(msg, conv_id):
-    return f"Processed: {{msg}} for {{conv_id}}"
-```
+# ### Example Code Block:
+# ```python
+# def process_message(msg, conv_id):
+#     return f"Processed: {{msg}} for {{conv_id}}"
+# ```
 
-*This is a demo response showing markdown capabilities.*"""
+# *This is a demo response showing markdown capabilities.*"""
     
     return {"response": response_text}
 
-@app.post("/upload-data", response_model=UploadDataResponse)
-async def upload_data(
-    file: UploadFile = File(...),
-    conversation_id: str = Form(default=None)
-) -> Dict[str, str]:
-    """
-    Upload data endpoint that accepts file uploads and conversation_id.
-    Saves uploaded .bin file into conversation_data/ with name <filename>_<conversation_id>.bin
-    If no conversation_id is provided, generates a UUID.
-    """
+@app.post("/upload-data")
+async def upload_data(file: UploadFile = File(...), conversation_id: str = Form(...)) -> Dict[str, str]:
     print("Received /upload-data request")
-    
-    # Generate UUID if no conversation_id provided
-    if conversation_id is None:
-        conversation_id = str(uuid.uuid4())
-        print(f"Generated new conversation_id: {conversation_id}")
-    else:
-        print(f"Using provided conversation_id: {conversation_id}")
-    
+    print(f"Conversation ID: {conversation_id}")
     print(f"Uploaded file: {file.filename}, content_type: {file.content_type}")
 
     try:
-        # Create conversation_data directory if it doesn't exist
-        conversation_data_dir = "conversation_data"
-        os.makedirs(conversation_data_dir, exist_ok=True)
-        print(f"Ensured conversation_data directory exists at: {conversation_data_dir}")
-
         # Check if the uploaded file is a .bin file
         if not file.filename.endswith('.bin'):
             print("File is not a .bin file")
@@ -106,24 +119,34 @@ async def upload_data(
 
         # Extract filename without extension
         filename_without_ext = os.path.splitext(file.filename)[0]
-        print(f"Filename without extension: {filename_without_ext}")
+        temp_filename = f"{filename_without_ext}_{conversation_id}.bin"
 
-        # Create the new filename: <filename>_<conversation_id>.bin
-        new_filename = f"{filename_without_ext}_{conversation_id}.bin"
-        file_path = os.path.join(conversation_data_dir, new_filename)
-        print(f"Saving file as: {file_path}")
+        # Read the uploaded file into memory
+        file_contents = await file.read()  # async read
+       
+        # Create a temporary file that provides a real file path
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as tmp_file:
+            tmp_file.write(file_contents)
+            tmp_file_path = tmp_file.name
 
-        # Save the uploaded file
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        start_time = time.time()
+        message_dfs = bin_to_dataframe_optimized(tmp_file_path)
+        duration = time.time() - start_time
+        print(f"bin_to_dataframe_optimized took {duration:.3f} seconds")
 
-        print(f"File saved successfully: {new_filename}")
+        global sessions
+        sessions[str(conversation_id)] = {
+            "result_df": None,
+            "message_dfs": message_dfs,
+            "messages": []
+        }
 
-        res = {"status": "success", "message": f"File saved as {new_filename}", "conversation_id": conversation_id}
-        return res
+        print(f"File ready in temp path: {tmp_file_path}")
+        print(sessions.keys())
+
+        return {"status": "success", "message": f"File processed as {temp_filename}"}
 
     except Exception as e:
         print(f"Exception occurred: {e}")
-        return {"status": "error", "message": f"Failed to save file: {str(e)}"}
-
+        return {"status": "error", "message": f"Failed to process file: {str(e)}"}
 
