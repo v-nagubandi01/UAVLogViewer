@@ -121,14 +121,6 @@ or
 }
 ```
 
-**Supported Data Types:**
-- GPS coordinates and altitude
-- Attitude (roll, pitch, yaw)
-- Vibration data
-- Control tuning parameters
-- Battery status
-- And other MAVLink message types
-
 ## Project Structure
 
 ```
