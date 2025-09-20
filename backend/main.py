@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, List
 import os
 import shutil
 import uuid
@@ -15,13 +15,23 @@ from langchain_core.messages import ToolMessage
 
 app = FastAPI(title="UAV Log Viewer Backend", version="1.0.0")
 
-# Add CORS middleware
+# Add CORS middleware with more restrictive settings
+# In production, replace with specific frontend URLs
+allowed_origins = [
+    "http://localhost:3000",  # React development server
+    "http://localhost:3001",  # Alternative React port
+    "http://127.0.0.1:3000",  # Localhost alternative
+    "http://127.0.0.1:3001",  # Localhost alternative
+    # Add your production frontend URL here
+    # "https://your-frontend-domain.com"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Specific methods only
+    allow_headers=["Content-Type", "Authorization", "Accept"],  # Specific headers only
 )
 
 
@@ -44,11 +54,54 @@ class UploadDataResponse(BaseModel):
     conversation_id: str = ""
 
 
+class SessionInfo(BaseModel):
+    session_id: str
+    filename: str = ""
+    message_count: int = 0
+    number_of_user_questions: int = 0
+    created_at: str = ""
+
+
+class SessionInfoResponse(BaseModel):
+    total_sessions: int
+    active_sessions: List[SessionInfo]
+
+
 sessions = {}
+# Track session metadata for better management
+session_metadata = {}
 
 @app.get("/")
 async def root():
     return {"message": "UAV Log Viewer Backend is running"}
+
+
+@app.get("/session-info", response_model=SessionInfoResponse)
+async def get_session_info():
+    """
+    Get information about active sessions including count and details.
+    """
+    global sessions, session_metadata
+    
+    active_sessions = []
+    
+    for session_id in sessions.keys():
+        session_data = sessions[session_id]
+        metadata = session_metadata.get(session_id, {})
+        
+        session_info = SessionInfo(
+            session_id=session_id,
+            filename=metadata.get("filename", "Unknown"),
+            message_count=len(session_data.get("messages", [])),
+            number_of_user_questions=metadata.get("number_of_user_questions", 0),
+            created_at=metadata.get("created_at", "Unknown")
+        )
+        active_sessions.append(session_info)
+    
+    return SessionInfoResponse(
+        total_sessions=len(sessions),
+        active_sessions=active_sessions
+    )
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -80,6 +133,10 @@ async def chat(message_data: ChatMessage) -> Dict[str, str]:
     state["messages"] = state["messages"] + [
         {"role": "user", "content": message_data.message}
     ]
+    
+    # Increment user questions counter in session metadata
+    if message_data.conversationId in session_metadata:
+        session_metadata[message_data.conversationId]["number_of_user_questions"] += 1
 
     print("State messages before invoke:")
     print(state['messages'])
@@ -139,6 +196,13 @@ async def upload_data(
             "message_dfs": message_dfs,
             "messages": [],
         }
+        
+        # Store session metadata
+        session_metadata[str(conversation_id)] = {
+            "filename": file.filename,
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "number_of_user_questions": 0
+        }
 
         print(f"File ready in temp path: {tmp_file_path}")
         print(sessions.keys())
@@ -148,3 +212,4 @@ async def upload_data(
     except Exception as e:
         print(f"Exception occurred: {e}")
         return {"status": "error", "message": f"Failed to process file: {str(e)}"}
+
