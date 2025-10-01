@@ -17,6 +17,7 @@ from langgraph.prebuilt import InjectedState, ToolNode
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool, InjectedToolCallId
+from rag import query_rag
 
 import asyncio
 
@@ -127,8 +128,14 @@ When answering questions, keep in mind that the user will not see the Pandas cod
 def select_message_types_tool(
     user_question: str, state: Annotated[dict, InjectedState]
 ) -> list[str]:
-    message_types = "\n".join(sorted(state["message_dfs"].keys()))
 
+
+
+    message_types = query_rag(user_question)
+
+    print("From RAG:", message_types)
+
+    
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)
 
     prompt = f""" 
@@ -140,36 +147,13 @@ This is the user question that should be answered using the log data:
 
 Consider the following when selecting messages:
 
-* Sensor Lifecycle: Sensor messages (e.g., GPS, IMU, MAG, BARO, BAT, VIBE) may report zero, empty, or sentinel values during initialization, degradation, or failure. Only select messages that reliably record valid values for the relevant parameter. Sensor readings can drift or be incomplete during startup or recovery phases; plan selection logic accordingly.
-* Vehicle Lifecycle: The vehicle passes through preflight, arming/takeoff, active flight, landing, and disarmed/shutdown phases. Prefer messages that provide meaningful information across the relevant phase(s). Avoid messages that exist only briefly unless the question specifically concerns that event. Values that seem anomalous or incomplete during preflight or post-flight are normal and should not lead to message exclusion unless relevant to the question.
+1. **Identify Primary Sources:** Select the message types that are most directly and essentially related to answering the question. 
 
-Note: ArduPilot message types can be broadly categorized as follows:
-- Sensors (e.g., GPS, IMU, MAG, BARO, BAT, VIBE) – record physical measurements.
-- Flight/Attitude/Navigation (e.g., ATT, CTUN, POS, RATE, XKF*) – record vehicle motion and orientation.
-- Commands, Modes, and Control (e.g., CMD, MODE, RCIN, PID*) – record vehicle state, commands sent, and control outputs.
-- System info / Parameters / Metadata (e.g., PARM, VER, FMT) – record configuration, system state, and overall flight metadata.
-- Errors / Warnings / Status messages (e.g., ERR, MSG) – record faults, warnings, or other important events.
+2. **Ensure Sufficiency Through Correlation:** The selection must be sufficient to fully answer the question. **Some questions might require correlating data from multiple messages.
 
-Additionally, the following messages generally provide information throughout the flight and are useful for overall flight summary or timing:  
-["ERR", "MSG", "MODE", "HEARTBEAT", "PARM", "VER", "FMT", "STAT", "STATS", "CMD", "MISSION"]
+3. **Include Valuable Context:** While you should not include truly irrelevant messages, you **should include secondary messages if they provide crucial context**
 
-Guidelines for selecting relevant message types:
-
-1. Consider Sensor and Vehicle Lifecycles:
-   - Sensor Lifecycle: Sensor messages (e.g., GPS, IMU, MAG, BARO, BAT, VIBE) may report zero, empty, or sentinel values during initialization, degradation, or failure. Only select messages that reliably record valid values for the relevant parameter. Sensor readings can drift or be incomplete during startup or recovery phases; plan selection logic accordingly.
-   - Vehicle Lifecycle: The vehicle passes through preflight, arming/takeoff, active flight, landing, and disarmed/shutdown phases. Prefer messages that provide meaningful information across the relevant phase(s). Avoid messages that exist only briefly unless the question specifically concerns that event. Values that seem anomalous or incomplete during preflight or post-flight are normal and should not lead to message exclusion unless relevant to the question.
-
-2. If the question is about a specific flight parameter or sensor:
-   - Select the message type(s) that record that parameter.
-   - Consider whether the field is reliably populated and not just a placeholder (e.g., temperature may be 0 if no sensor).
-
-3. If the question involves multiple parameters or subsystems:
-   - Select all message types that contain relevant data.
-
-4. If the question is about overall flight performance, summary metrics, or timing:
-   - Select messages that cover the full flight, record vehicle state, arming/disarming, position, or timestamps.
-   - Prefer messages from the list ["ERR", "MSG", "MODE", "HEARTBEAT", "PARM", "VER", "FMT", "STAT", "STATS", "CMD", "MISSION"] if they provide relevant information.
-   - Avoid messages that exist only during specific events or short periods 
+4. **Handle Overlapping Data:** If multiple messages have similar information, you should **generally select only the most direct and precise source.** However, you should include multiple sources if comparing them provides a valuable complementary perspective for a full analysis
 
 5. Always think in terms of ArduPilot telemetry and what each message type represents.
    - Do not select messages arbitrarily; select only those necessary to answer the question reliably.
@@ -180,10 +164,11 @@ Output format:
   - Single message type: ["GPS"]
   - Multiple message types: ["GPS", "ATT", "CTUN"]
 - Do not include any extra text, explanation, or punctuation outside the list.
-
 """
 
     response = llm.invoke(prompt).content
+
+    print("From prompt", response)
 
     return response
 

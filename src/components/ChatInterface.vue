@@ -158,7 +158,7 @@ export default {
             try {
                 // Create AbortController for timeout
                 const controller = new AbortController()
-                const timeoutId = setTimeout(() => controller.abort(), 180000)
+                const timeoutId = setTimeout(() => controller.abort(), 240000)
 
                 // Make POST request to FastAPI backend
                 const response = await fetch('/chat', {
@@ -199,6 +199,8 @@ export default {
                 } else {
                     errorText = `I got an error while processing your message.\n\n**Details:** ${error.message}\n\n`
                 }
+
+                console.log(error.message)
 
                 const errorMessage = {
                     id: this.messageId++,

@@ -13,26 +13,18 @@ import shutil
 from langchain_core.messages import ToolMessage
 
 
+
 app = FastAPI(title="UAV Log Viewer Backend", version="1.0.0")
 
-# Add CORS middleware with more restrictive settings
-# In production, replace with specific frontend URLs
-allowed_origins = [
-    "http://localhost:3000",  # React development server
-    "http://localhost:3001",  # Alternative React port
-    "http://127.0.0.1:3000",  # Localhost alternative
-    "http://127.0.0.1:3001",  # Localhost alternative
-    # Add your production frontend URL here
-    # "https://your-frontend-domain.com"
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Specific methods only
-    allow_headers=["Content-Type", "Authorization", "Accept"],  # Specific headers only
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],  # Specific methods only
+    allow_headers=["*"],  # Specific headers only
 )
+
 
 
 class ChatMessage(BaseModel):

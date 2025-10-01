@@ -2,7 +2,7 @@ AHR2 = """
 Table Description: Backup AHRS data. 
 
 Fields:
-    TimeUS: Time since system startup (μs). 
+    TimeUS: Time since system startup (μs).
     Roll: Estimated roll (deg). 
     Pitch: Estimated pitch (deg). 
     Yaw: Estimated yaw (degheading). 
@@ -13,6 +13,9 @@ Fields:
     Q2: Estimated attitude quaternion component 2. 
     Q3: Estimated attitude quaternion component 3. 
     Q4: Estimated attitude quaternion component 4. 
+
+Extra Information:
+Think of this as the drone's backup "inner ear" or sense of balance. The primary system (see XKF1) is constantly figuring out the drone's orientation (roll, pitch, yaw) and location. The AHR2 message logs the data from a secondary, simpler system that runs alongside it. If the primary system has a problem, the drone can use this backup data to stay stable. It's a crucial safety feature for redundancy.
 """
 
 ATT = """
@@ -27,6 +30,9 @@ Fields:
     DesYaw: vehicle desired yaw (degheading). 
     Yaw: achieved vehicle yaw (degheading). 
     AEKF: active EKF type. 
+
+Extra Information:
+This is one of the most important messages for analyzing flight performance. It directly compares what the pilot or autopilot *wanted* the drone to do (Desired Roll/Pitch/Yaw) with what it *actually* did (achieved Roll/Pitch/Yaw). A large gap between the two indicates poor tuning or a physical problem, meaning the drone is not responding to commands as expected.
 """
 
 AUXF = """
@@ -235,6 +241,9 @@ Enums for 'source' field:
     MAVLINK (3): Source index is MAVLink channel number. 
     MISSION (4): Source index is mission item index. 
     SCRIPTING (5): Source index is not used (always 0). 
+
+Extra Information:
+This log entry is like a record of every time a special function was activated using a switch on the remote control. Think of it as logging when the pilot flips a switch to engage "Return to Home," "Land," "Take a picture," or deploy landing gear. It's useful for understanding what commands were given during a flight and confirming if the drone successfully executed them. The `result` field is useful for this.
 """
 
 BARO = """
@@ -253,6 +262,9 @@ Fields:
     GndTemp: temperature on ground, specified by parameter or measured while on ground (degC). 
     H: true if barometer is considered healthy. 
     CPress: compensated atmospheric pressure (Pa). 
+
+Extra Information:
+This is the drone's altimeter. The barometer sensor measures air pressure. Since air pressure decreases predictably as you go higher, the drone can use this measurement to calculate its altitude. This data is crucial for tasks like holding a steady height ("Altitude Hold"), automated landing, and following terrain. It's often more reliable for short-term altitude changes than GPS.
 """
 
 BAT = """
@@ -271,6 +283,9 @@ Fields:
     RemPct: remaining percentage (%). 
     H: health. 
     SH: state of health percentage. 0 if unknown (%). 
+
+Extra Information: 
+This is the drone's "fuel gauge." It provides critical information about the battery's voltage, the amount of current being drawn by the motors, and the total energy consumed. This data is essential for monitoring the health of the battery and diagnosing power issues. A sudden voltage drop under high current (a "voltage sag") can indicate a weak battery and is a common cause of crashes. It tracks the voltage, how much power is being drawn (current), the temperature, and the estimated percentage remaining. This is one of the most important messages to monitor, as it helps the pilot know when to land before the battery runs out, preventing a crash.
 """
 
 CMD = """
@@ -289,10 +304,8 @@ Fields:
     Lng: Command longitude (deglongitude). 
     Alt: Command altitude (m). 
     Frame: Frame used for position. 
-"""
 
-CTRL = """
-The information for the table named "CTRL" could not be found in the provided document. 
+This message logs each step of a pre-planned autonomous mission. It's like looking at the drone's to-do list. When the drone reaches a waypoint or performs an action like "take a picture," a CMD message is logged. This is invaluable for debugging autonomous flights to see if the drone was executing the mission as planned.
 """
 
 CTUN = """
@@ -319,6 +332,9 @@ Enums for 'AsT' field:
     DCM_SYNTHETIC (2). 
     EKF3_SYNTHETIC (3). 
     SIM (4). 
+
+Extra Information:
+This message gives a detailed look into the drone's navigation and throttle control. It's more specific than the 'ATT' message, showing how the navigation controller is trying to steer the drone (NavRoll, NavPitch) and how the throttle is being managed. This is used by developers and advanced users to fine-tune the drone's performance in guided modes like 'Auto' or 'Loiter'. This data is essential for engineers to "tune" the drone's software (its PID settings) to make it fly more smoothly, responsively, and accurately, especially in windy conditions.
 """
 
 DSF = """
@@ -332,10 +348,9 @@ Fields:
     FMn: Minimum free space in write buffer in last time period. 
     FMx: Maximum free space in write buffer in last time period. 
     FAv: Average free space in write buffer in last time period. 
-"""
 
-DU32 = """
-The information for the table named "DU32" could not be found in the provided document. 
+Extra Information:
+This is a health-check message for the drone's "black box" logging system itself. It tells you if the memory card is keeping up with the amount of data being written. If you see a high number of 'Dp' (dropped messages), it means your log file is incomplete because the system was overloaded. This isn't for flight analysis, but for diagnosing problems with the logging hardware.    
 """
 
 ERR = """
@@ -378,6 +393,9 @@ Enums for 'Subsys' field:
     FAILSAFE_VIBE (29). 
     INTERNAL_ERROR (30). 
     FAILSAFE_DEADRECKON (31). 
+
+Extra Information:
+This is the drone's error log. When something goes wrong, the system generates an ERR message to record the problem. It identifies which part of the drone had the issue (the Subsys, like GPS, Compass, or Failsafe system) and a specific code (ECode) to describe the exact error. This is often the first place to look when a flight goes wrong to diagnose what happened.
 """
 
 FILE = """
@@ -388,6 +406,9 @@ Fields:
     Offset: Offset into the file of this block. 
     Length: Length of this data block. 
     Data: File data of this block (char 64). 
+
+Extra Information:
+This message type is used for transferring files to or from the drone's flight controller, typically over the MAVLink telemetry link. For example, it could be used to download a different log file or upload a terrain map. It's not related to the flight performance itself but is part of the drone's data management capabilities.    
 """
 
 FMT = """
@@ -399,6 +420,9 @@ Fields:
     Name: name of the message being defined (char 4). 
     Format: character string defining the C-storage-type of the fields in this message (char 16). 
     Columns: the labels of the message being defined (char 64). 
+
+Extra Information:
+This is a critical "header" message that appears at the beginning of every log file. It acts as a dictionary, defining the structure of every other message type in the log (like 'ATT', 'GPS', etc.). Log analysis software reads these FMT messages first to understand how to interpret the rest of the data file. A user would almost never look at this directly.
 """
 
 FMTU = """
@@ -409,6 +433,9 @@ Fields:
     FmtType: numeric reference to associated FMT message. 
     UnitIds: each character refers to a UNIT message.  The unit at an offset corresponds to the field at the same offset in FMT.Format (char 16). 
     MultIds: each character refers to a MULT message. The multiplier at an offset corresponds to the field at the same offset in FMT.Format (char 16). 
+
+Extra Information:
+Working alongside the 'FMT', 'UNIT', and 'MULT' messages, this message helps make the log file self-describing. It links the data fields defined in 'FMT' to their correct units (e.g., meters/second, degrees) and any necessary multipliers. Like 'FMT', this is part of the log's internal structure and is read by software, not by a human analyst.
 """
 
 FTN = """
@@ -430,6 +457,9 @@ Fields:
     NF10: desired harmonic notch centre frequency for motor 10 (Hz). 
     NF11: desired harmonic notch centre frequency for motor 11 (Hz). 
     NF12: desired harmonic notch centre frequency for motor 12 (Hz). 
+
+Extra Information:
+This message is for advanced vibration analysis and suppression. It shows the specific noise frequencies associated with each motor that the autopilot is trying to filter out. This is useful for confirming that the dynamic notch filters are correctly tracking motor RPM to eliminate vibration that could otherwise harm sensor performance.
 """
 
 FTN1 = """
@@ -449,6 +479,9 @@ Fields:
     FHY: FFT health, Y-axis. 
     FHZ: FFT health, Z-axis. 
     Tc: FFT cycle time (μs). 
+
+Extra Information:
+This message gives an overview of the drone's vibration management system. The autopilot uses a technique called FFT (Fast Fourier Transform) to "listen" to the vibrations from the motors and propellers. This log shows the primary noise frequency it has detected and how strong that noise is compared to the actual flight signals (the Signal-to-Noise ratio). It's a key indicator of overall vibration levels.
 """
 
 FTN2 = """
@@ -469,6 +502,9 @@ Fields:
     EnX: power spectral density bin energy of the peak on roll. 
     EnY: power spectral density bin energy of the peak on roll. 
     EnZ: power spectral density bin energy of the peak on roll. 
+
+Extra Information:
+This message provides a deeper dive into the vibration data summarized in FTN1. It pinpoints the exact frequencies where vibration is the strongest for each axis (roll, pitch, yaw). This is extremely useful for diagnosing the source of a vibration problem. For example, a peak at a specific frequency might correspond to the RPM of an unbalanced propeller.
 """
 
 GPA = """
@@ -488,6 +524,9 @@ Fields:
     AEl: altitude above WGS-84 ellipsoid; INT32_MIN (-2147483648) if unknown (m). [cite: 170, 171]
     RTCMFU: RTCM fragments used. 
     RTCMFD: RTCM fragments discarded. 
+
+Extra Information:
+While the 'GPS' message tells you *where* the drone is, this 'GPA' message tells you how *confident* the GPS receiver is about that position. The 'HAcc' and 'VAcc' fields show the estimated position error in meters. Lower numbers are better. If these values are high, it means the GPS signal is poor, and the drone's ability to hold a position or navigate accurately will be degraded.
 """
 
 GPS = """
@@ -518,6 +557,9 @@ Enums for 'Status' field:
     GPS_OK_FIX_3D_DGPS (4): Receiving valid messages and 3D lock with differential improvements. 
     GPS_OK_FIX_3D_RTK_FLOAT (5): Receiving valid messages and 3D RTK Float. 
     GPS_OK_FIX_3D_RTK_FIXED (6): Receiving valid messages and 3D RTK Fixed. 
+
+Extra Information:
+This message contains the fundamental position data from the GPS module. It tells you the drone's latitude, longitude, altitude, speed, and heading. Key things to check here are the 'NSats' (number of satellites) and 'Status'. A low number of satellites or a poor status (e.g., 'NO_FIX') will result in inaccurate positioning and unreliable navigation.
 """
 
 HEAT = """
@@ -530,6 +572,9 @@ Fields:
     P: Proportional portion of response. 
     I: Integral portion of response. 
     Out: Controller output to heating element. 
+
+Extra Information:
+High-end inertial sensors (IMUs) are sensitive to temperature changes. To ensure consistent performance, they are often equipped with a heater to maintain a stable operating temperature. This message shows if the heater is working correctly by comparing the actual 'Temp' to the 'Targ' (target) temperature. It's mostly relevant for professional systems flying in very cold conditions.
 """
 
 IMU = """
@@ -551,6 +596,9 @@ Fields:
     AH: accelerometer health. 
     GHz: gyroscope measurement rate (Hz). 
     AHz: accelerometer measurement rate (Hz). 
+
+Extra Information:
+The IMU is the core of the drone's flight control system, providing the high-frequency motion data necessary for stable flight. The gyroscopes (GyrX/Y/Z) measure rotational velocity, while the accelerometers (AccX/Y/Z) measure linear acceleration, which includes both the drone's movement and the constant pull of gravity. The flight controller's primary task is to fuse these two sensor readings, typically using an Extended Kalman Filter (EKF), to produce an accurate, real-time estimate of the drone's attitude (its roll, pitch, and yaw orientation). This attitude estimate is the foundation for all autonomous and manual stabilization; the drone constantly compares its current attitude to the desired attitude (from the pilot or mission plan) and adjusts motor outputs to correct any errors. For post-flight analysis, this data is the most critical source for diagnosing flight problems. Excessive vibration, often caused by unbalanced propellers, a damaged frame, or failing motors, appears as high-frequency noise or "clipping" (where the sensor hits its maximum reading) in the accelerometer data. This noise can corrupt the attitude estimate, leading to poor flight performance, oscillations, and reduced efficiency.
 """
 
 IOMC = """
@@ -564,7 +612,10 @@ Fields:
     NPkt: Number of packets received by IOMCU. 
     Nerr: Protocol failures on MCU side. 
     Nerr2: Reported number of failures on IOMCU side. 
-    NDel: Number of delayed packets received by MCU. 
+    NDel: Number of delayed packets received by MCU.
+
+Extra Information:
+On some flight controllers, a separate "I/O" processor handles inputs and outputs. This message provides low-level diagnostic information about that specific chip. It is not used for normal flight analysis and is only relevant to hardware developers when debugging potential hardware failures. 
 """
 
 ISBD = """
@@ -577,6 +628,9 @@ Fields:
     x: x-axis sample value (m/s/s). 
     y: y-axis sample value (m/s/s). 
     z: z-axis sample value (m/s/s). 
+
+Extra Information:
+This message is part of a high-speed IMU logging system. It contains the actual sensor measurement data for a "batch" of readings defined in an 'ISBH' header message. This allows for very high-rate data capture, which is essential for advanced vibration analysis, but is generally too detailed for standard flight review.    
 """
 
 ISBH = """
@@ -591,6 +645,9 @@ Fields:
     smp_cnt: samples in this batch. 
     SampleUS: timestamp of first sample (μs). 
     smp_rate: rate at which samples have been collected (Hz). 
+
+Extra Information:
+This is the "header" message for a batch of high-speed IMU data. It defines how many samples are in the following 'ISBD' messages and at what rate they were captured. This system is designed for efficiency when logging sensor data thousands of times per second. A typical user would analyze the final vibration in the 'VIBE' message, while a developer might use these batch logs for deeper analysis.
 """
 
 MAG = """
@@ -610,6 +667,9 @@ Fields:
     MOZ: motor interference magnetic field offset in body frame (mGauss). 
     Health: true if the compass is considered healthy. 
     S: time measurement was taken (μs). 
+
+Extra Information:
+This message contains the raw data from the drone's compass (magnetometer). The compass is essential for determining the drone's heading (yaw). A common problem is magnetic interference from the drone's own power wires or motors. You would analyze this data to see if the magnetic field readings are stable or if they change erratically when the motors spin up, which would indicate an interference problem.
 """
 
 MAV = """
@@ -632,6 +692,9 @@ Enums for 'flags' field:
     STREAMING (4). 
     PRIVATE (8). 
     LOCKED (16). 
+
+Extra Information:
+This message provides statistics on the quality of the communication link between the drone and the ground control station (GCS). The 'rxdp' field (received dropped packets) is particularly important. A high number here indicates a poor or intermittent radio link, which could lead to a failsafe if communication is lost entirely.
 """
 
 MAVC = """
@@ -654,6 +717,9 @@ Fields:
     Z: Z coordinate from mavlink packet. 
     Res: command result being returned from autopilot. 
     WL: true if this command arrived via a COMMAND_LONG rather than COMMAND_INT. 
+
+Extra Information:
+This message logs any commands sent to the drone from the ground station or another onboard computer. This is useful for verifying that the drone received and executed a command, such as "change mode," "set new waypoint," or "return to launch." It provides a record of external commands given to the vehicle during its flight.
 """
 
 MODE = """
@@ -722,6 +788,9 @@ Enums for 'Rsn' field:
     AUX_FUNCTION (53). 
     FIXED_WING_AUTOLAND (54). 
     FENCE_REENABLE (55). 
+
+Extra Information:
+This is a simple but very important message. It shows which flight mode the drone was in (e.g., Stabilize, Loiter, Auto, Return-to-Launch) at any given time. Unexpected mode changes are a huge clue when diagnosing a problem. The 'Rsn' (Reason) field is especially useful, as it explains *why* the mode changed, for example, due to a 'BATTERY_FAILSAFE'.
 """
 
 MOTB = """
@@ -735,6 +804,9 @@ Fields:
     ThrAvMx: Maximum average throttle that can be used to maintain attitude control, derived from throttle mix params. 
     ThrOut: Throttle output. 
     FailFlags: bit 0 motor failed, bit 1 motors balanced, should be 2 in normal flight. 
+
+Extra Information:
+This message provides insight into how the autopilot is managing power distribution to the motors. It's particularly useful for diagnosing power-related performance limits. For instance, the 'ThLimit' field shows if the system is intentionally reducing throttle to prevent excessive current draw from the battery. This can tell you if your drone is underpowered for the maneuvers it's attempting.
 """
 
 MSG = """
@@ -743,6 +815,9 @@ Table Description: Textual messages.
 Fields:
     TimeUS: Time since system startup (μs). 
     Message: message text (char 64). 
+
+Extra Information:
+This is a human-readable log message. The software can print plain text status updates or warnings here, such as "GPS Glitch" or "EKF Initialised". It's often one of the easiest places to get a quick overview of the major events that occurred during a flight without needing to interpret complex data fields.
 """
 
 MULT = """
@@ -752,6 +827,9 @@ Fields:
     TimeUS: Time since system startup (μs). 
     Id: character referenced by FMTU. 
     Mult: numeric multiplier. 
+
+Extra Information:
+This message is part of the log file's internal structure, working with 'FMT' and 'UNIT' to make the data self-describing. It defines multipliers that can be applied to raw data values to convert them to standard units. A user analyzing a log would not look at this message directly; it is used by the log parsing software.
 """
 
 PARM = """
@@ -762,6 +840,9 @@ Fields:
     Name: parameter name (char 16). 
     Value: parameter value. 
     Default: default parameter value for this board and config. 
+
+Extra Information:
+This message records the value of a specific configuration parameter at the beginning of the flight. This creates a snapshot of the drone's settings for that flight. It's extremely important for reproducibility and debugging, as it allows you to know the exact tuning and configuration that was active when a problem occurred.
 """
 
 PIDA = """
@@ -786,6 +867,9 @@ Enums for 'Flags' field:
     PD_SUM_LIMIT (2): true if the PD sum limit is active. 
     RESET (4): true if the controller was reset. 
     I_TERM_SET (8): true if the I term has been set externally including reseting to 0. 
+
+Extra Information:
+This message (and the other PID messages) shows the performance of the drone's lowest-level control loops. This specific one is for vertical acceleration (throttle control). It compares the 'Tar' (target acceleration) with the 'Act' (actual acceleration). Flight control engineers analyze this data to tune the PID gains (P, I, D) to make the drone hold altitude smoothly and responsively.
 """
 
 PIDE = """
@@ -810,6 +894,9 @@ Enums for 'Flags' field:
     PD_SUM_LIMIT (2): true if the PD sum limit is active. 
     RESET (4): true if the controller was reset. 
     I_TERM_SET (8): true if the I term has been set externally including reseting to 0. 
+
+Extra Information:
+This message shows the performance of the position controller for East/West movement. It compares the drone's target velocity with its actual velocity along the East-West axis. It is used to tune how well the drone maintains its position and follows navigation commands in modes like Loiter or Auto.
 """
 
 PIDN = """
@@ -834,6 +921,9 @@ Enums for 'Flags' field:
     PD_SUM_LIMIT (2): true if the PD sum limit is active. 
     RESET (4): true if the controller was reset. 
     I_TERM_SET (8): true if the I term has been set externally including reseting to 0. 
+
+Extra Information:
+This message shows the performance of the position controller for North/South movement. It compares the drone's target velocity with its actual velocity along the North-South axis. Along with PIDE, it's used to tune how well the drone holds its position against wind and follows navigation waypoints.
 """
 
 PIDP = """
@@ -858,6 +948,9 @@ Enums for 'Flags' field:
     PD_SUM_LIMIT (2): true if the PD sum limit is active. 
     RESET (4): true if the controller was reset. 
     I_TERM_SET (8): true if the I term has been set externally including reseting to 0. 
+
+Extra Information:
+This message details the performance of the pitch stabilization controller. It compares the target pitch rotation rate ('Tar') with the actual rate measured by the gyro ('Act'). A large 'Err' or oscillations in the 'Act' value indicate that the pitch PID gains need tuning for better stability and responsiveness.
 """
 
 PIDR = """
@@ -882,6 +975,9 @@ Enums for 'Flags' field:
     PD_SUM_LIMIT (2): true if the PD sum limit is active. 
     RESET (4): true if the controller was reset. 
     I_TERM_SET (8): true if the I term has been set externally including reseting to 0. 
+
+Extra Information:
+This message details the performance of the roll stabilization controller. It compares the target roll rotation rate ('Tar') with the actual rate measured by the gyro ('Act'). Along with PIDP, this is one of the most critical logs for tuning the core stability of a multirotor or plane to ensure it flies smoothly and without shaking.
 """
 
 PIDY = """
@@ -906,6 +1002,9 @@ Enums for 'Flags' field:
     PD_SUM_LIMIT (2): true if the PD sum limit is active. 
     RESET (4): true if the controller was reset. 
     I_TERM_SET (8): true if the I term has been set externally including reseting to 0. 
+
+Extra Information:
+This message details the performance of the yaw (heading) stabilization controller. It compares the target yaw rotation rate with the actual rate. It's used to tune how well the drone holds its heading and responds to yaw commands from the pilot. Poor yaw tuning can lead to a "tail wag" or sluggish heading control.
 """
 
 PM = """
@@ -960,6 +1059,9 @@ Enums for 'InE' field:
     params_restored (268435456). 
     invalid_arg_or_result (536870912). 
     __LAST__ (1073741824). 
+
+Extra Information:
+This message acts like the drone's "Task Manager." It shows the health of the main flight computer, including its CPU load ('Load') and whether its main calculations are finishing on time ('NLon' - Number of Long Loops). If the CPU is overloaded or loops are taking too long, it can lead to unstable flight, so this is a key health indicator for the flight controller hardware.
 """
 
 POS = """
@@ -971,7 +1073,10 @@ Fields:
     Lng: Canonical vehicle longitude (deglongitude). 
     Alt: Canonical vehicle altitude (m). 
     RelHomeAlt: Canonical vehicle altitude relative to home (m). 
-    RelOriginAlt: Canonical vehicle altitude relative to navigation origin (m). 
+    RelOriginAlt: Canonical vehicle altitude relative to navigation origin (m).
+
+Extra Information:
+This message provides the single "best guess" of the vehicle's true position. The flight controller's EKF (Extended Kalman Filter) combines data from GPS, barometer, and accelerometers to produce this final, filtered position estimate. When you want to plot the drone's flight path on a map, this is the data you should use.
 """
 
 POWR = """
@@ -992,6 +1097,9 @@ Enums for 'Flags' and 'AccFlags' fields:
     PERIPH_OVERCURRENT (8): peripheral supply is in over-current state. 
     PERIPH_HIPOWER_OVERCURRENT (16): hi-power peripheral supply is in over-current state. 
     CHANGED (32): Power status has changed since boot. 
+
+Extra Information:
+This message monitors the health of the flight controller's own power supply, not the main flight battery. It shows the board's internal voltage ('Vcc'). It's useful for diagnosing hardware problems, like a failing voltage regulator, or for confirming events like a USB connection. A drop in 'Vcc' can cause the processor to reset or behave erratically.
 """
 
 PSCD = """
@@ -1008,6 +1116,9 @@ Fields:
     DAD: Desired acceleration Down (m/s/s). 
     TAD: Target acceleration Down (m/s/s). 
     AD: Acceleration Down (m/s/s). 
+
+Extra Information:
+This message provides a detailed look into how the autopilot is controlling its vertical position. It breaks down the desired vs. actual position, velocity, and acceleration along the Down axis. This is useful for analyzing how well the drone is holding its altitude or executing vertical movements in modes like 'Loiter' or 'Auto'.
 """
 
 PSCE = """
@@ -1024,6 +1135,9 @@ Fields:
     DAE: Desired acceleration East (m/s/s). 
     TAE: Target acceleration East (m/s/s). 
     AE: Acceleration East (m/s/s). 
+
+Extra Information:
+This message provides a detailed look into how the autopilot is controlling its lateral position along the East-West axis. It breaks down the desired vs. actual position, velocity, and acceleration. This is useful for analyzing how well the drone is holding its position against wind or tracking a line during a mission.
 """
 
 PSCN = """
@@ -1040,6 +1154,9 @@ Fields:
     DAN: Desired acceleration North (m/s/s). 
     TAN: Target acceleration North (m/s/s). 
     AN: Acceleration North (m/s/s). 
+
+Extra Information:
+This message provides a detailed look into how the autopilot is controlling its lateral position along the North-South axis. It breaks down the desired vs. actual position, velocity, and acceleration. Together with PSCE, it gives a complete picture of the drone's horizontal navigation performance.
 """
 
 RAD = """
@@ -1054,6 +1171,9 @@ Fields:
     RemNoise: local noise floor reported from remote radio. 
     RxErrors: damaged packet count. 
     Fixed: fixed damaged packet count. 
+
+Extra Information:
+This message shows the status of the telemetry radio link, which is used for communication with the ground station. The 'RSSI' (Received Signal Strength Indicator) and 'RemRSSI' (Remote RSSI) are the most important fields. They tell you the signal strength at both the drone and the ground station. Low values indicate that the drone is far away or there is radio interference.
 """
 
 RATE = """
@@ -1074,6 +1194,9 @@ Fields:
     A: achieved vehicle vertical acceleration (cm/s/s). 
     AOut: percentage of vertical thrust output current being used. 
     AOutSlew: vertical thrust output slew rate. 
+
+Extra Information:
+This message is crucial for tuning the drone's responsiveness and stability. It compares the desired rotation *speed* (e.g., how fast the pilot wants to roll) with the actual rotation speed measured by the gyros. If the actual rate doesn't track the desired rate well, it can make the drone feel sluggish or overly aggressive. The PIDR, PIDP, and PIDY logs show the underlying controller behavior that drives these rates.
 """
 
 RCI2 = """
@@ -1089,6 +1212,9 @@ Fields:
 Enums for 'Flags' field:
     HAS_VALID_INPUT (1): true if the system is receiving good RC values. 
     IN_RC_FAILSAFE (2): true if the system is current in RC failsafe. 
+
+Extra Information:
+This message is a continuation of the 'RCIN' message, providing data for radio control channels 15 and 16. It also contains important status flags, such as whether the RC receiver has a valid signal or if it has entered a failsafe state due to lost connection with the pilot's transmitter.
 """
 
 RCIN = """
@@ -1109,7 +1235,10 @@ Fields:
     C11: channel 11 input (us). 
     C12: channel 12 input (us). 
     C13: channel 13 input (us). 
-    C14: channel 14 input (us). 
+    C14: channel 14 input (us).
+
+Extra Information:
+This is a direct recording of the commands sent from the pilot's remote control. C1-C4 typically correspond to roll, pitch, yaw, and throttle. When analyzing a crash or unexpected behavior, this is one of the most important logs to check, as it shows you exactly what the pilot was commanding the drone to do at the moment of the incident. 
 """
 
 RCO2 = """
@@ -1123,6 +1252,9 @@ Fields:
     C16: channel 16 output (us). 
     C17: channel 17 output (us). 
     C18: channel 18 output (us). 
+
+Extra Information:
+This message is a continuation of the RCOU message, showing the final command signals being sent out on channels 15 through 18. These higher channels are typically used for controlling auxiliary devices like cameras, grippers, or landing gear.
 """
 
 RCOU = """
@@ -1146,6 +1278,9 @@ Fields:
     C12: channel 12 output (us). 
     C13: channel 13 output (us). 
     C14: channel 14 output (us). 
+
+Extra Information:
+This message shows the final command signals that the flight controller is sending to the motors (or servos on a plane). By comparing 'RCIN' (pilot's command) with 'RCOU' (motor output), you can see how the autopilot is translating the pilot's intent into action. In stabilized modes, these values will be constantly changing as the controller works to keep the drone level.
 """
 
 STAK = """
@@ -1158,6 +1293,9 @@ Fields:
     Total: total stack. 
     Free: free stack. 
     Name: thread name (char 16). 
+
+Extra Information:
+This is a low-level diagnostic message for software developers. It provides information about the memory usage (stack) for different software processes running on the flight controller. It is not used for analyzing flight characteristics but is crucial for debugging complex software issues like memory leaks or stack overflows.
 """
 
 TSYN = """
@@ -1167,6 +1305,9 @@ Fields:
     TimeUS: Time since system startup (μs). 
     SysID: system ID this data is for. 
     RTT: round trip time for this system (μs). 
+
+Extra Information:
+Think of this like checking if all the clocks in a network are set to the same time. In a drone, different components (like the flight controller and a companion computer) need to have a synchronized sense of time to correctly align their data. You'd look at this log if you suspect that data from different sources isn't lining up correctly, which could cause issues in advanced navigation or data analysis. A high RTT (Round Trip Time) might indicate a communication delay between components.
 """
 
 UNIT = """
@@ -1176,6 +1317,9 @@ Fields:
     TimeUS: Time since system startup (μs). 
     Id: character referenced by FMTU. 
     Label: Unit - SI where available (char 64). 
+
+Extra Information:
+This is essentially a legend or a key for other parts of the log. Other log messages might say a value is of type 'v', and this UNIT message tells you that 'v' means "Volts". It's a foundational message that helps software correctly interpret and display all the other data. You wouldn't typically look at this for flight diagnostics, but it's critical for any program that reads and analyzes the logs.
 """
 
 VER = """
@@ -1223,6 +1367,9 @@ Enums for 'BU' field:
     APM_BUILD_AP_Bootloader (11). 
     APM_BUILD_Blimp (12). 
     APM_BUILD_Heli (13). 
+
+Extra Information:
+This message is logged once at the beginning of the flight and provides a snapshot of the exact firmware version and hardware being used. It is one of the first things you should check when diagnosing a problem. Knowing the firmware version is crucial because bugs or changes in flight behavior are often specific to certain releases. It provides essential context before you dive deeper into other log data.
 """
 
 VIBE = """
@@ -1235,6 +1382,9 @@ Fields:
     VibeY: Primary accelerometer filtered vibration, y-axis (m/s/s). 
     VibeZ: Primary accelerometer filtered vibration, z-axis (m/s/s). 
     Clip: Number of clipping events on 1st accelerometer. 
+
+Extra Information:
+Drones are sensitive to vibrations, which often come from motors and propellers. Excessive vibration can confuse the sensors, leading to unstable flight. Think of it like trying to read a book in a shaky car. This message tells you how much vibration the drone is experiencing. You'd check this log if the drone flies erratically or you get "high vibration" warnings. High values for VibeX/Y/Z or a non-zero Clip count are clear indicators that you need to check for unbalanced props, loose components, or improve your vibration damping.
 """
 
 XKF1 = """
@@ -1257,6 +1407,9 @@ Fields:
     GY: Estimated gyro bias, Y axis (deg/s). 
     GZ: Estimated gyro bias, Z axis (deg/s). 
     OH: Height of origin above WGS-84 (m). 
+
+Extra Information:
+This message contains the EKF's (Extended Kalman Filter) "best guess" of the drone's state. It fuses noisy data from multiple sensors (GPS, IMU, barometer) to produce a single, clean estimate of the drone's attitude, velocity, and position. This is one of the most important messages for post-flight analysis. You would plot these fields to visualize the actual flight path and orientation of the vehicle, and compare it to the pilot's commands or the autonomous mission plan to understand how the drone performed.
 """
 
 XKF2 = """
@@ -1278,7 +1431,10 @@ Fields:
     MZ: Magnetic field strength (body Z-axis) (mGauss). 
     IDX: Innovation in vehicle drag acceleration (X-axis component) (m/s/s). 
     IDY: Innovation in vehicle drag acceleration (Y-axis component) (m/s/s). 
-    IS: Innovation in vehicle sideslip (rad). 
+    IS: Innovation in vehicle sideslip (rad).
+
+Extra Information:
+This message provides insight into the corrections and external factors the EKF is estimating. The accelerometer biases (`AX`, `AY`, `AZ`) show how much the EKF is correcting for persistent errors in the accelerometer readings; large or unstable biases might suggest a need for recalibration. The wind velocity estimates (`VWN`, `VWE`) are very useful for explaining why a drone might be using more power or struggling to track a straight line in windy conditions.
 """
 
 XKF3 = """
@@ -1300,6 +1456,9 @@ Fields:
     IVT: Innovation in true-airspeed (UNKNOWN). 
     RErr: Accumulated relative error of this core with respect to active primary core. 
     ErSc: A consolidated error score where higher numbers are less healthy. 
+
+Extra Information:
+"Innovations" represent the difference between the sensor's measurement and what the EKF predicted that measurement would be. This message is extremely powerful for diagnosing sensor health. For example, if the GPS signal suddenly becomes noisy, the velocity innovations (`IVN`, `IVE`) will spike because the GPS readings are disagreeing with the EKF's predictions based on the IMU. Consistently high innovations for a particular sensor (e.g., magnetism `IMX`, `IMY`, `IMZ`) point directly to the source of a navigation problem. The `ErSc` (Error Score) is a great at-a-glance health indicator.
 """
 
 XKF4 = """
@@ -1343,6 +1502,9 @@ Enums for 'SS' field:
     INITALIZED (65536): has ever been healthy. 
     REJECTING_AIRSPEED (131072): rejecting airspeed data. 
     DEAD_RECKONING (262144): dead reckoning (e.g. no position or velocity source). 
+
+Extra Information:
+This message reports on the EKF's internal health and confidence. The variance fields (`SV`, `SP`, `SH`) tell you how uncertain the EKF is about its own estimates; high values indicate low confidence. The most useful fields are the status bitmasks, `FS` and `SS`. By decoding these bitmasks, you can get a quick, definitive summary of the EKF's condition, such as whether it thinks the attitude is valid, if it's using GPS, or if it has detected a GPS glitch. This should be one of the first places you look to get a high-level overview of navigation health.
 """
 
 XKF5 = """
@@ -1363,6 +1525,9 @@ Fields:
     eAng: Magnitude of angular error (rad). 
     eVel: Magnitude of velocity error (m/s). 
     ePos: Magnitude of position error (m). 
+
+Extra Information:
+This message is a specialized version of the innovations message (XKF3), focusing on data from auxiliary sensors like optical flow and rangefinders. You would analyze this data when diagnosing issues with GPS-denied flight or precision landing systems. For example, high optical flow innovations (`FIX`, `FIY`) could indicate poor performance due to a low-contrast surface or flying too high. The `HAGL` (Height Above Ground Level) field is particularly useful, providing a direct estimate of the drone's altitude above the terrain below it, which is often more relevant than altitude above sea level.
 """
 
 XKFM = """
@@ -1376,6 +1541,9 @@ Fields:
     ALR: Accelerometer length ratio. 
     GDR: Gyroscope rate of change ratio. 
     ADR: Accelerometer rate of change ratio. 
+
+Extra Information:
+This is a simple diagnostic message that shows the status of the EKF's internal logic for determining if the vehicle is stationary on the ground. This logic is important because the EKF uses this 'on ground' state to perform sensor calibrations and checks before takeoff. You would typically only look at this message to confirm that the EKF correctly identified the pre-flight stationary condition before the flight began.
 """
 
 XKFS = """
@@ -1392,6 +1560,9 @@ Fields:
     GPS_GTA: GPS good to align. 
     GPS_CHK_WAIT: Waiting for GPS checks to pass. 
     MAG_FUSION: Magnetometer fusion (0=not fusing/1=fuse yaw/2=fuse mag). 
+
+Extra Information:
+This message is vital for vehicles equipped with redundant sensors (e.g., two GPS modules, multiple compasses). It shows which specific sensor the EKF is currently listening to. If a drone suddenly starts behaving erratically, checking this message can reveal if the EKF switched from a healthy primary sensor to a faulty secondary one. It provides a clear trace of the EKF's sensor fallback logic in action.
 """
 
 XKQ = """
@@ -1404,6 +1575,9 @@ Fields:
     Q2: Quaternion b term  
     Q3: Quaternion c term 
     Q4: Quaternion d term 
+
+Extra Information:
+This message represents the vehicle's attitude (orientation in 3D space) using quaternions. While the XKF1 message provides attitude in human-readable Euler angles (roll, pitch, yaw), quaternions are the format used internally for calculations because they avoid a mathematical singularity problem known as "gimbal lock." You would typically use this message for advanced analysis, such as creating a 3D visualization of the flight or interfacing with robotics software that uses quaternions.
 """
 
 XKT = """
@@ -1421,6 +1595,9 @@ Fields:
     AngMax: accumulated measurement time interval for the delta angle (maximum) (s). 
     VMin: accumulated measurement time interval for the delta velocity (minimum) (s). 
     VMax: accumulated measurement time interval for the delta velocity (maximum) (s). 
+
+Extra Information:
+This message is used for diagnosing performance issues with the flight controller's processor. It shows how much time is being spent on the EKF calculations and how consistently the sensor data is arriving. If the `EKFMax` value is very high or the `IMUMax` is much larger than the average, it could indicate that the processor is overloaded. An overloaded CPU can't keep up with the calculations needed for stable flight, leading to poor performance.
 """
 
 XKV1 = """
@@ -1441,6 +1618,9 @@ Fields:
     V09: Variance for state 9 (position-down). 
     V10: Variance for state 10 (delta-angle-bias-x). 
     V11: Variance for state 11 (delta-angle-bias-y). 
+
+Extra Information:
+This message, along with XKV2, offers a deep dive into the EKF's internal confidence for each specific state it estimates. Variance is a statistical measure of uncertainty. A low variance for a state (e.g., `V04` for north-velocity) means the EKF is very confident in its estimate for that value. These are the raw numbers behind the summarized variances in XKF4. You would analyze these fields for highly detailed, expert-level diagnostics to pinpoint exactly which part of the state estimate is uncertain.
 """
 
 XKV2 = """
@@ -1461,4 +1641,8 @@ Fields:
     V21: Variance for state 21 (body-frame mag-field-bias-z). 
     V22: Variance for state 22 (wind-north). 
     V23: Variance for state 23 (wind-east). 
+
+Extra Information:
+This message is a continuation of XKV1, providing the EKF's internal uncertainty for the remaining states, particularly the sensor biases and wind estimates. For example, a high variance in the magnetometer bias states (`V16`, `V17`, `V18`) would indicate that the EKF is struggling to compensate for magnetic interference, which would likely lead to poor heading estimation. Analyzing these values is key for advanced debugging of sensor fusion issues.
 """
+

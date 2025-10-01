@@ -1,0 +1,246 @@
+*[{'source': 'BARO'}]
+ 
+Table Description: Gathered Barometer data. 
+
+Fields:
+    TimeUS: Time since system startup (μs). 
+    I: barometer sensor instance number (instance). 
+    Alt: calculated altitude (m). 
+    AltAMSL: altitude AMSL (m). 
+    Press: measured atmospheric pressure (Pa). 
+    Temp: measured atmospheric temperature (degC). 
+    CRt: derived climb rate from primary barometer (m/s). 
+    SMS: time last sample was taken (ms). 
+    Offset: raw adjustment of barometer altitude, zeroed on calibration, possibly set by GCS (m). 
+    GndTemp: temperature on ground, specified by parameter or measured while on ground (degC). 
+    H: true if barometer is considered healthy. 
+    CPress: compensated atmospheric pressure (Pa). 
+
+Extra Information:
+This is the drone's altimeter. The barometer sensor measures air pressure. Since air pressure decreases predictably as you go higher, the drone can use this measurement to calculate its altitude. This data is crucial for tasks like holding a steady height ("Altitude Hold"), automated landing, and following terrain. It's often more reliable for short-term altitude changes than GPS.
+ 
+========
+========
+========
+
+*[{'source': 'POS'}]
+ 
+Table Description: Canonical vehicle position. 
+
+Fields:
+    TimeUS: Time since system startup (μs). 
+    Lat: Canonical vehicle latitude (deglatitude). 
+    Lng: Canonical vehicle longitude (deglongitude). 
+    Alt: Canonical vehicle altitude (m). 
+    RelHomeAlt: Canonical vehicle altitude relative to home (m). 
+    RelOriginAlt: Canonical vehicle altitude relative to navigation origin (m).
+
+Extra Information:
+This message provides the single "best guess" of the vehicle's true position. The flight controller's EKF (Extended Kalman Filter) combines data from GPS, barometer, and accelerometers to produce this final, filtered position estimate. When you want to plot the drone's flight path on a map, this is the data you should use.
+ 
+========
+========
+========
+
+*[{'source': 'XKF1'}]
+ 
+Table Description: EKF3 estimator outputs. 
+
+Fields:
+    TimeUS: Time since system startup (μs). 
+    C: EKF3 core this data is for (instance). 
+    Roll: Estimated roll (deg). 
+    Pitch: Estimated pitch (deg). 
+    Yaw: Estimated yaw (degheading). 
+    VN: Estimated velocity (North component) (m/s). 
+    VE: Estimated velocity (East component) (m/s). 
+    VD: Estimated velocity (Down component) (m/s). 
+    dPD: Filtered derivative of vertical position (down) (m/s). 
+    PN: Estimated distance from origin (North component) (m). 
+    PE: Estimated distance from origin (East component) (m). 
+    PD: Estimated distance from origin (Down component) (m). 
+    GX: Estimated gyro bias, X axis (deg/s). 
+    GY: Estimated gyro bias, Y axis (deg/s). 
+    GZ: Estimated gyro bias, Z axis (deg/s). 
+    OH: Height of origin above WGS-84 (m). 
+
+Extra Information:
+This message contains the EKF's (Extended Kalman Filter) "best guess" of the drone's state. It fuses noisy data from multiple sensors (GPS, IMU, barometer) to produce a single, clean estimate of the drone's attitude, velocity, and position. This is one of the most important messages for post-flight analysis. You would plot these fields to visualize the actual flight path and orientation of the vehicle, and compare it to the pilot's commands or the autonomous mission plan to understand how the drone performed.
+ 
+========
+========
+========
+
+*[{'source': 'BARO'}]
+ 
+Table Description: Gathered Barometer data. 
+
+Fields:
+    TimeUS: Time since system startup (μs). 
+    I: barometer sensor instance number (instance). 
+    Alt: calculated altitude (m). 
+    AltAMSL: altitude AMSL (m). 
+    Press: measured atmospheric pressure (Pa). 
+    Temp: measured atmospheric temperature (degC). 
+    CRt: derived climb rate from primary barometer (m/s). 
+    SMS: time last sample was taken (ms). 
+    Offset: raw adjustment of barometer altitude, zeroed on calibration, possibly set by GCS (m). 
+    GndTemp: temperature on ground, specified by parameter or measured while on ground (degC). 
+    H: true if barometer is considered healthy. 
+    CPress: compensated atmospheric pressure (Pa). 
+
+Extra Information:
+This is the drone's altimeter. The barometer sensor measures air pressure. Since air pressure decreases predictably as you go higher, the drone can use this measurement to calculate its altitude. This data is crucial for tasks like holding a steady height ("Altitude Hold"), automated landing, and following terrain. It's often more reliable for short-term altitude changes than GPS.
+ 
+========
+========
+========
+
+*[{'source': 'MSG'}]
+ 
+Table Description: Textual messages. 
+
+Fields:
+    TimeUS: Time since system startup (μs). 
+    Message: message text (char 64). 
+
+Extra Information:
+This is a human-readable log message. The software can print plain text status updates or warnings here, such as "GPS Glitch" or "EKF Initialised". It's often one of the easiest places to get a quick overview of the major events that occurred during a flight without needing to interpret complex data fields.
+ 
+========
+========
+========
+
+*[{'source': 'CTUN'}]
+ 
+Table Description: Control Tuning information. 
+
+Fields:
+    TimeUS: Time since system startup (μs). 
+    NavRoll: desired roll (deg). 
+    Roll: achieved roll (deg). 
+    NavPitch: desired pitch assuming pitch trims are already applied (deg). 
+    Pitch: achieved pitch assuming pitch trims are already applied,ie “0deg” is level flight trimmed pitch attitude as shown on artificial horizon level line. (deg). [cite: 101, 102]
+    ThO: scaled output throttle. 
+    RdO: scaled output rudder. 
+    ThD: demanded speed-height-controller throttle. 
+    As: airspeed estimate (or measurement if airspeed sensor healthy and ARSPD_USE>0) (m/s). 
+    AsT: airspeed type ( old estimate or source of new estimate) (enum). 
+    SAs: DCM’s airspeed estimate, NaN if not available (m/s). 
+    E2T: equivalent to true airspeed ratio. 
+    GU: groundspeed undershoot when flying with minimum groundspeed (cm/s). 
+
+Enums for 'AsT' field:
+    NO_NEW_ESTIMATE (0). 
+    AIRSPEED_SENSOR (1). 
+    DCM_SYNTHETIC (2). 
+    EKF3_SYNTHETIC (3). 
+    SIM (4). 
+
+Extra Information:
+This message gives a detailed look into the drone's navigation and throttle control. It's more specific than the 'ATT' message, showing how the navigation controller is trying to steer the drone (NavRoll, NavPitch) and how the throttle is being managed. This is used by developers and advanced users to fine-tune the drone's performance in guided modes like 'Auto' or 'Loiter'. This data is essential for engineers to "tune" the drone's software (its PID settings) to make it fly more smoothly, responsively, and accurately, especially in windy conditions.
+ 
+========
+========
+========
+
+*[{'source': 'GPA'}]
+ 
+Table Description: GPS accuracy information. 
+
+Fields:
+    I: GPS instance number (μs). 
+    TimeUS: Time since system startup (instance). 
+    VDop: vertical dilution of precision. 
+    HAcc: horizontal position accuracy (m). 
+    VAcc: vertical position accuracy (m). 
+    SAcc: speed accuracy (m/s). 
+    YAcc: yaw accuracy (deg). 
+    VV: true if vertical velocity is available. 
+    SMS: time since system startup this sample was taken (ms). 
+    Delta: system time delta between the last two reported positions (ms). 
+    AEl: altitude above WGS-84 ellipsoid; INT32_MIN (-2147483648) if unknown (m). [cite: 170, 171]
+    RTCMFU: RTCM fragments used. 
+    RTCMFD: RTCM fragments discarded. 
+
+Extra Information:
+While the 'GPS' message tells you *where* the drone is, this 'GPA' message tells you how *confident* the GPS receiver is about that position. The 'HAcc' and 'VAcc' fields show the estimated position error in meters. Lower numbers are better. If these values are high, it means the GPS signal is poor, and the drone's ability to hold a position or navigate accurately will be degraded.
+ 
+========
+========
+========
+
+*[{'source': 'POS'}]
+ 
+Table Description: Canonical vehicle position. 
+
+Fields:
+    TimeUS: Time since system startup (μs). 
+    Lat: Canonical vehicle latitude (deglatitude). 
+    Lng: Canonical vehicle longitude (deglongitude). 
+    Alt: Canonical vehicle altitude (m). 
+    RelHomeAlt: Canonical vehicle altitude relative to home (m). 
+    RelOriginAlt: Canonical vehicle altitude relative to navigation origin (m).
+
+Extra Information:
+This message provides the single "best guess" of the vehicle's true position. The flight controller's EKF (Extended Kalman Filter) combines data from GPS, barometer, and accelerometers to produce this final, filtered position estimate. When you want to plot the drone's flight path on a map, this is the data you should use.
+ 
+========
+========
+========
+
+*[{'source': 'XKF5'}]
+ 
+Table Description: EKF3 Sensor innovations (primary core) and general dumping ground. 
+
+Fields:
+    TimeUS: Time since system startup (μs). 
+    C: EKF3 core this data is for (instance). 
+    NI: Normalised flow variance. 
+    FIX: Optical flow LOS rate vector innovations from the main nav filter (X-axis). 
+    FIY: Optical flow LOS rate vector innovations from the main nav filter (Y-axis). 
+    AFI: Optical flow LOS rate innovation from terrain offset estimator. 
+    HAGL: Height above ground level (m). 
+    offset: Estimated vertical position of the terrain relative to the nav filter zero datum (UNKNOWN). 
+    RI: Range finder innovations (UNKNOWN). 
+    rng: Measured range (UNKNOWN). 
+    Herr: Filter ground offset state error (m). 
+    eAng: Magnitude of angular error (rad). 
+    eVel: Magnitude of velocity error (m/s). 
+    ePos: Magnitude of position error (m). 
+
+Extra Information:
+This message is a specialized version of the innovations message (XKF3), focusing on data from auxiliary sensors like optical flow and rangefinders. You would analyze this data when diagnosing issues with GPS-denied flight or precision landing systems. For example, high optical flow innovations (`FIX`, `FIY`) could indicate poor performance due to a low-contrast surface or flying too high. The `HAGL` (Height Above Ground Level) field is particularly useful, providing a direct estimate of the drone's altitude above the terrain below it, which is often more relevant than altitude above sea level.
+ 
+========
+========
+========
+
+*[{'source': 'XKF1'}]
+ 
+Table Description: EKF3 estimator outputs. 
+
+Fields:
+    TimeUS: Time since system startup (μs). 
+    C: EKF3 core this data is for (instance). 
+    Roll: Estimated roll (deg). 
+    Pitch: Estimated pitch (deg). 
+    Yaw: Estimated yaw (degheading). 
+    VN: Estimated velocity (North component) (m/s). 
+    VE: Estimated velocity (East component) (m/s). 
+    VD: Estimated velocity (Down component) (m/s). 
+    dPD: Filtered derivative of vertical position (down) (m/s). 
+    PN: Estimated distance from origin (North component) (m). 
+    PE: Estimated distance from origin (East component) (m). 
+    PD: Estimated distance from origin (Down component) (m). 
+    GX: Estimated gyro bias, X axis (deg/s). 
+    GY: Estimated gyro bias, Y axis (deg/s). 
+    GZ: Estimated gyro bias, Z axis (deg/s). 
+    OH: Height of origin above WGS-84 (m). 
+
+Extra Information:
+This message contains the EKF's (Extended Kalman Filter) "best guess" of the drone's state. It fuses noisy data from multiple sensors (GPS, IMU, barometer) to produce a single, clean estimate of the drone's attitude, velocity, and position. This is one of the most important messages for post-flight analysis. You would plot these fields to visualize the actual flight path and orientation of the vehicle, and compare it to the pilot's commands or the autonomous mission plan to understand how the drone performed.
+ 
+========
+========
+========
