@@ -481,8 +481,23 @@ def summarize_results_tool(state: Annotated[dict, InjectedState]):
             elif len(state["result_df"]) < 5:
                 return state["result_df"].head(5).to_string(index=False)
             else:
-                summary = f""" There are {len(state["result_df"])} results for your question"""
-                return
+                summary = (
+                f"There are {len(state["result_df"])} results in the dataframe.\n\n"
+                f"Columns and types:\n{state["result_df"].dtypes.to_string()}\n\n"
+                f"First 5 rows:\n{state["result_df"].head(5).to_string(index=False)}"
+                )
+
+                llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)
+
+                summary_prompt = f"""This is a summary of a data frame that was generated
+                    {summary}
+        
+                Explain this dataframe a little bit more for context. Note the dataframe was generate by analyzing one or more messages from ArduPilot. It contains the results to a question that was asked.
+                """
+
+                final_summary = summary + llm.invoke(summary_prompt).content
+
+                return final_summary
         else:
             return "result_df doesn't seem to be saved make sure pandas_executor was successfully before using this tool"
 
