@@ -171,6 +171,8 @@ export default {
             }
             reader.readAsArrayBuffer(file)
 
+            console.log(reader.readAsArrayBuffer(file))
+
             // Start async backend upload in parallel (fire-and-forget)
             this.uploadToBackendAsync(file)
         },
