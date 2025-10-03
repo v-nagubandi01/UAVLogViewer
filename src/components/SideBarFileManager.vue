@@ -80,6 +80,7 @@ export default {
             }
             // Reset backend processing status for sample files
             this.state.backendProcessingComplete = false
+            this.state.messagesSentToBackend = false
             const oReq = new XMLHttpRequest()
             console.log(`loading file from ${url}`)
 
@@ -155,6 +156,12 @@ export default {
             this.file = file
             // Reset backend processing status for new file
             this.state.backendProcessingComplete = false
+            this.state.messagesSentToBackend = false
+            // Generate conversationId immediately for .bin files
+            if (file.name.endsWith('.bin')) {
+                this.state.conversationId = crypto.randomUUID()
+                console.log('Generated conversationId for .bin file:', this.state.conversationId)
+            }
             const reader = new FileReader()
             reader.onload = function (e) {
                 const data = reader.result
@@ -171,8 +178,6 @@ export default {
             }
             reader.readAsArrayBuffer(file)
 
-            console.log(reader.readAsArrayBuffer(file))
-
             // Start async backend upload in parallel (fire-and-forget)
             this.uploadToBackendAsync(file)
         },
@@ -184,15 +189,17 @@ export default {
                 return
             }
 
+            // Use the conversationId already generated in process()
+            const conversationId = this.state.conversationId
+            if (!conversationId) {
+                console.error('Error: conversationId should have been generated already!')
+                return
+            }
+
             // Create new FormData for each upload
             const formData = new FormData()
-            // Generate UUID for conversation_id
-            const conversationId = crypto.randomUUID()
             formData.append('file', file)
             formData.append('conversation_id', conversationId)
-
-            // Store conversation_id in state for chat interface
-            this.state.conversationId = conversationId
 
             console.log('Uploading to /upload-data with conversation_id:', conversationId)
 

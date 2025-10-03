@@ -19,6 +19,7 @@ export const store = {
     showChat: false,
     conversationId: null,
     backendProcessingComplete: false,
+    messagesSentToBackend: false,
     flightModeChanges: [],
     file: null,
     events: [],

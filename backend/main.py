@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, List
+from typing import Dict, List, Any
 import os
 import shutil
 import uuid
@@ -11,6 +11,7 @@ from deepagent import create_graph
 import tempfile
 import shutil
 from langchain_core.messages import ToolMessage
+import pandas as pd
 
 
 app = FastAPI(title="UAV Log Viewer Backend", version="1.0.0")
@@ -67,9 +68,94 @@ class SessionInfoResponse(BaseModel):
     active_sessions: List[SessionInfo]
 
 
+class MessagesUploadRequest(BaseModel):
+    conversationId: str
+    messages: Dict[str, Any]
+
+
+class MessagesUploadResponse(BaseModel):
+    status: str
+    message: str = ""
+
+
 sessions = {}
 # Track session metadata for better management
 session_metadata = {}
+
+
+def convert_messages_to_dataframes(messages: Dict[str, Any]) -> Dict[str, pd.DataFrame]:
+    """
+    Convert frontend messages to pandas DataFrames.
+    Merges instance messages like XKQ[0], XKQ[1], etc. into a single XKQ DataFrame.
+    No columns are added - just raw data concatenation.
+    
+    Args:
+        messages: Dictionary of message types with their data arrays
+        
+    Returns:
+        Dictionary of DataFrames keyed by message name (without instance numbers)
+    """
+    import re
+    
+    # Pattern to match message names with instance numbers like 'XKQ[0]'
+    instance_pattern = re.compile(r'^(.+?)\[(\d+)\]$')
+    
+    # Group messages by base name
+    message_groups = {}
+    
+    for msg_type, msg_data in messages.items():
+        # Check if this is an instanced message
+        match = instance_pattern.match(msg_type)
+        
+        if match:
+            # Extract base name (e.g., 'XKQ' from 'XKQ[0]')
+            base_name = match.group(1)
+            instance_num = int(match.group(2))
+            
+            if base_name not in message_groups:
+                message_groups[base_name] = {}
+            message_groups[base_name][instance_num] = msg_data
+        else:
+            # Non-instanced message, store directly
+            if msg_type not in message_groups:
+                message_groups[msg_type] = {0: msg_data}
+            else:
+                message_groups[msg_type][0] = msg_data
+    
+    # Convert to DataFrames
+    result_dfs = {}
+    
+    for msg_name, instances in message_groups.items():
+        # Combine all instances into a single DataFrame
+        all_dfs = []
+        
+        for instance_num in sorted(instances.keys()):
+            msg_data = instances[instance_num]
+            
+            # Skip if not a dictionary or empty
+            if not isinstance(msg_data, dict) or not msg_data:
+                continue
+            
+            # Create DataFrame from the message data
+            try:
+                df = pd.DataFrame(msg_data)
+                all_dfs.append(df)
+            except Exception as e:
+                print(f"Warning: Could not convert {msg_name}[{instance_num}] to DataFrame: {e}")
+                continue
+        
+        # Combine all instances
+        if all_dfs:
+            if len(all_dfs) == 1:
+                result_dfs[msg_name] = all_dfs[0]
+            else:
+                # Concatenate multiple instances without adding any columns
+                result_dfs[msg_name] = pd.concat(all_dfs, ignore_index=True)
+                # Sort by time if available
+                if 'time_boot_ms' in result_dfs[msg_name].columns:
+                    result_dfs[msg_name] = result_dfs[msg_name].sort_values('time_boot_ms').reset_index(drop=True)
+    
+    return result_dfs
 
 @app.get("/")
 async def root():
@@ -212,4 +298,85 @@ async def upload_data(
     except Exception as e:
         print(f"Exception occurred: {e}")
         return {"status": "error", "message": f"Failed to process file: {str(e)}"}
+
+
+@app.post("/upload-messages", response_model=MessagesUploadResponse)
+async def upload_messages(request: MessagesUploadRequest) -> Dict[str, str]:
+    """
+    Endpoint to receive parsed messages from the frontend.
+    Called once after all messages have been processed.
+    """
+    global sessions, session_metadata
+    
+    print(f"\n{'='*60}")
+    print("Received /upload-messages request")
+    print(f"Conversation ID: {request.conversationId}")
+    print(f"{'='*60}\n")
+    
+    try:
+        # Create session if it doesn't exist
+        if request.conversationId not in sessions:
+            print(f"Session not found, creating new session for {request.conversationId}")
+            sessions[request.conversationId] = {
+                "result_df": None,
+                "message_dfs": {},
+                "messages": [],  # Empty list for chat messages
+            }
+            session_metadata[request.conversationId] = {
+                "filename": "unknown",
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "number_of_user_questions": 0
+            }
+        
+        # Get message types and counts
+        message_types = list(request.messages.keys())
+        total_message_types = len(message_types)
+        
+        print(f"Received {total_message_types} message types:")
+        for msg_type in message_types:
+            msg_data = request.messages[msg_type]
+            if isinstance(msg_data, dict) and 'time_boot_ms' in msg_data:
+                count = len(msg_data['time_boot_ms'])
+                print(f"  - {msg_type}: {count} entries")
+            else:
+                print(f"  - {msg_type}: (structure varies)")
+        
+        print("\nConverting messages to DataFrames...")
+        # Convert messages to DataFrames (merging instances)
+        message_dfs = convert_messages_to_dataframes(request.messages)
+        
+        print(f"Created {len(message_dfs)} DataFrames (instances merged):")
+        for msg_name, df in message_dfs.items():
+            print(f"  - {msg_name}: {len(df)} rows, {len(df.columns)} columns")
+        
+        # Store the DataFrames in the session
+        if request.conversationId in sessions:
+            # Replace message_dfs with frontend parsed data
+            sessions[request.conversationId]["message_dfs"] = message_dfs
+            
+            # Also keep raw messages if needed
+            sessions[request.conversationId]["frontend_messages"] = request.messages
+            
+            # Update session metadata
+            if request.conversationId in session_metadata:
+                session_metadata[request.conversationId]["frontend_messages_received"] = True
+                session_metadata[request.conversationId]["message_types_count"] = len(message_dfs)
+                session_metadata[request.conversationId]["message_types"] = list(message_dfs.keys())
+        
+        print(f"\nSuccessfully stored DataFrames for conversation {request.conversationId}")
+        print(f"{'='*60}\n")
+        
+        return {
+            "status": "success",
+            "message": f"Successfully received and converted {len(message_dfs)} message types to DataFrames"
+        }
+        
+    except Exception as e:
+        print(f"Exception occurred while processing messages: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "status": "error",
+            "message": f"Failed to process messages: {str(e)}"
+        }
 

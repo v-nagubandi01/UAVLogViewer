@@ -87,6 +87,9 @@ export default {
     },
     methods: {
         extractFlightData () {
+            // Capture a snapshot of all messages BEFORE any deletions for backend upload
+            const allMessagesSnapshot = this.captureMessagesSnapshot()
+
             if (this.dataExtractor === null) {
                 if (this.state.logType === 'tlog') {
                     this.dataExtractor = MavlinkDataExtractor
@@ -210,6 +213,92 @@ export default {
                 if (this.state.mapAvailable) {
                     this.state.showMap = true
                 }
+            }
+
+            // Send messages to backend (only once, only for bin files)
+            this.sendMessagesToBackend(allMessagesSnapshot)
+        },
+
+        captureMessagesSnapshot () {
+            // Create a shallow copy of the messages object structure
+            // This captures all message types before any deletions
+            const snapshot = {}
+            for (const [msgType, msgData] of Object.entries(this.state.messages)) {
+                snapshot[msgType] = msgData
+            }
+            console.log(`Captured snapshot of ${Object.keys(snapshot).length} message types`)
+            return snapshot
+        },
+
+        async sendMessagesToBackend (messagesSnapshot) {
+            console.log('=== sendMessagesToBackend called ===')
+            console.log('logType:', this.state.logType)
+            console.log('conversationId:', this.state.conversationId)
+            console.log('messagesSentToBackend:', this.state.messagesSentToBackend)
+
+            // Only send for bin files with a conversation ID
+            if (this.state.logType !== 'bin') {
+                console.log('Skipping: not a bin file')
+                return
+            }
+
+            if (!this.state.conversationId) {
+                console.log('Skipping: no conversation ID')
+                return
+            }
+
+            // Only send once
+            if (this.state.messagesSentToBackend) {
+                console.log('Messages already sent to backend, skipping')
+                return
+            }
+
+            console.log('✅ All conditions met. Sending messages to backend...')
+            console.log('Number of message types:', Object.keys(messagesSnapshot).length)
+
+            try {
+                // Convert typed arrays to regular arrays for JSON serialization
+                const messagesForBackend = {}
+                for (const [msgType, msgData] of Object.entries(messagesSnapshot)) {
+                    messagesForBackend[msgType] = {}
+                    if (msgData && typeof msgData === 'object') {
+                        for (const [field, values] of Object.entries(msgData)) {
+                            // Convert typed arrays to regular arrays
+                            if (values && values.constructor && values.constructor.name.includes('Array')) {
+                                messagesForBackend[msgType][field] = Array.from(values)
+                            } else {
+                                messagesForBackend[msgType][field] = values
+                            }
+                        }
+                    }
+                }
+
+                const response = await fetch('/upload-messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        conversationId: this.state.conversationId,
+                        messages: messagesForBackend
+                    })
+                })
+
+                if (!response.ok) {
+                    const errorText = await response.text()
+                    console.error('Failed to send messages to backend:', errorText)
+                    throw new Error(`HTTP error! status: ${response.status}`)
+                }
+
+                const result = await response.json()
+                console.log('Backend response:', result)
+
+                // Mark as sent
+                this.state.messagesSentToBackend = true
+                console.log('Successfully sent messages to backend')
+            } catch (error) {
+                console.error('Error sending messages to backend:', error)
+                // Don't throw - this is a non-critical operation
             }
         },
 
