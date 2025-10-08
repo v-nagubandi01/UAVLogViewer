@@ -86,74 +86,32 @@ session_metadata = {}
 def convert_messages_to_dataframes(messages: Dict[str, Any]) -> Dict[str, pd.DataFrame]:
     """
     Convert frontend messages to pandas DataFrames.
-    Merges instance messages like XKQ[0], XKQ[1], etc. into a single XKQ DataFrame.
-    No columns are added - just raw data concatenation.
+    Each message type (including XKQ[0], XKQ[1], etc.) is treated as a separate DataFrame.
     
     Args:
         messages: Dictionary of message types with their data arrays
         
     Returns:
-        Dictionary of DataFrames keyed by message name (without instance numbers)
+        Dictionary of DataFrames keyed by message name
     """
-    import re
-    
-    # Pattern to match message names with instance numbers like 'XKQ[0]'
-    instance_pattern = re.compile(r'^(.+?)\[(\d+)\]$')
-    
-    # Group messages by base name
-    message_groups = {}
-    
-    for msg_type, msg_data in messages.items():
-        # Check if this is an instanced message
-        match = instance_pattern.match(msg_type)
-        
-        if match:
-            # Extract base name (e.g., 'XKQ' from 'XKQ[0]')
-            base_name = match.group(1)
-            instance_num = int(match.group(2))
-            
-            if base_name not in message_groups:
-                message_groups[base_name] = {}
-            message_groups[base_name][instance_num] = msg_data
-        else:
-            # Non-instanced message, store directly
-            if msg_type not in message_groups:
-                message_groups[msg_type] = {0: msg_data}
-            else:
-                message_groups[msg_type][0] = msg_data
-    
-    # Convert to DataFrames
+
     result_dfs = {}
     
-    for msg_name, instances in message_groups.items():
-        # Combine all instances into a single DataFrame
-        all_dfs = []
+    for msg_type, msg_data in messages.items():
+
+        if msg_type == "EV":
+            print (msg_data)
+        # Skip if not a dictionary or empty
+        if not isinstance(msg_data, dict) or not msg_data:
+            continue
         
-        for instance_num in sorted(instances.keys()):
-            msg_data = instances[instance_num]
-            
-            # Skip if not a dictionary or empty
-            if not isinstance(msg_data, dict) or not msg_data:
-                continue
-            
-            # Create DataFrame from the message data
-            try:
-                df = pd.DataFrame(msg_data)
-                all_dfs.append(df)
-            except Exception as e:
-                print(f"Warning: Could not convert {msg_name}[{instance_num}] to DataFrame: {e}")
-                continue
-        
-        # Combine all instances
-        if all_dfs:
-            if len(all_dfs) == 1:
-                result_dfs[msg_name] = all_dfs[0]
-            else:
-                # Concatenate multiple instances without adding any columns
-                result_dfs[msg_name] = pd.concat(all_dfs, ignore_index=True)
-                # Sort by time if available
-                if 'time_boot_ms' in result_dfs[msg_name].columns:
-                    result_dfs[msg_name] = result_dfs[msg_name].sort_values('time_boot_ms').reset_index(drop=True)
+        # Create DataFrame from the message data
+        try:
+            df = pd.DataFrame(msg_data)
+            result_dfs[msg_type] = df
+        except Exception as e:
+            print(f"Warning: Could not convert {msg_type} to DataFrame: {e}")
+            continue
     
     return result_dfs
 
@@ -291,10 +249,10 @@ async def upload_messages(request: MessagesUploadRequest) -> Dict[str, str]:
                 print(f"  - {msg_type}: (structure varies)")
         
         print("\nConverting messages to DataFrames...")
-        # Convert messages to DataFrames (merging instances)
+        # Convert messages to DataFrames
         message_dfs = convert_messages_to_dataframes(request.messages)
         
-        print(f"Created {len(message_dfs)} DataFrames (instances merged):")
+        print(f"Created {len(message_dfs)} DataFrames:")
         for msg_name, df in message_dfs.items():
             print(f"  - {msg_name}: {len(df)} rows, {len(df.columns)} columns")
         
