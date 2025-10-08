@@ -488,8 +488,8 @@ This is the error message from the failed execution:
 
 @tool(description="Outputs some of the rows from the result_df ")
 def summarize_results_tool(state: Annotated[dict, InjectedState]):
-    try:
 
+    try:
         if state["result_df"] is not None:
             if len(state["result_df"]) == 0:
                 return "There are no results please tell the user what this might mean"
@@ -497,7 +497,7 @@ def summarize_results_tool(state: Annotated[dict, InjectedState]):
                 return state["result_df"].head(5).to_string(index=False)
             else:
                 summary = f""" There are {len(state["result_df"])} results for your question"""
-                return
+                return summary
         else:
             return "result_df doesn't seem to be saved make sure pandas_executor was successfully before using this tool"
 

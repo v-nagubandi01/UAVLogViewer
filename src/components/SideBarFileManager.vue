@@ -89,6 +89,11 @@ export default {
             if (url.indexOf('.txt') > 0) {
                 this.state.logType = 'dji'
             }
+            // Generate conversationId for .bin files
+            if (this.state.logType === 'bin') {
+                this.state.conversationId = crypto.randomUUID()
+                console.log('Generated conversationId for sample .bin file:', this.state.conversationId)
+            }
 
             oReq.open('GET', url, true)
             oReq.responseType = 'arraybuffer'
@@ -178,8 +183,8 @@ export default {
             }
             reader.readAsArrayBuffer(file)
 
-            // Start async backend upload in parallel (fire-and-forget)
-            this.uploadToBackendAsync(file)
+            // Upload to backend is now handled via /upload-messages in Home.vue
+            // No longer using /upload-data endpoint
         },
         async uploadToBackendAsync (file) {
             console.log('Starting upload for file:', file.name, 'Type:', file.type, 'Size:', file.size)

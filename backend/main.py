@@ -248,57 +248,6 @@ async def chat(message_data: ChatMessage) -> Dict[str, str]:
     return {"response": response_text}
 
 
-@app.post("/upload-data")
-async def upload_data(
-    file: UploadFile = File(...), conversation_id: str = Form(...)
-) -> Dict[str, str]:
-    global sessions
-    print("Received /upload-data request")
-    print(f"Conversation ID: {conversation_id}")
-    print(f"Uploaded file: {file.filename}, content_type: {file.content_type}")
-
-    try:
-        # Check if the uploaded file is a .bin file
-        if not file.filename.endswith('.bin'):
-            print("File is not a .bin file")
-            return {"status": "error", "message": "Only .bin files are allowed"}
-
-        # Extract filename without extension
-        filename_without_ext = os.path.splitext(file.filename)[0]
-        temp_filename = f"{filename_without_ext}_{conversation_id}.bin"
-
-        # Read the uploaded file into memory
-        file_contents = await file.read()  # async read
-
-        # Create a temporary file that provides a real file path
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as tmp_file:
-            tmp_file.write(file_contents)
-            tmp_file_path = tmp_file.name
-
-        message_dfs = bin_to_dataframe_optimized(tmp_file_path)
-
-        sessions[str(conversation_id)] = {
-            "result_df": None,
-            "message_dfs": message_dfs,
-            "messages": [],
-        }
-        
-        # Store session metadata
-        session_metadata[str(conversation_id)] = {
-            "filename": file.filename,
-            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "number_of_user_questions": 0
-        }
-
-        print(f"File ready in temp path: {tmp_file_path}")
-        print(sessions.keys())
-
-        return {"status": "success", "message": f"File processed as {temp_filename}"}
-
-    except Exception as e:
-        print(f"Exception occurred: {e}")
-        return {"status": "error", "message": f"Failed to process file: {str(e)}"}
-
 
 @app.post("/upload-messages", response_model=MessagesUploadResponse)
 async def upload_messages(request: MessagesUploadRequest) -> Dict[str, str]:

@@ -293,8 +293,9 @@ export default {
                 const result = await response.json()
                 console.log('Backend response:', result)
 
-                // Mark as sent
+                // Mark as sent and enable chat UI
                 this.state.messagesSentToBackend = true
+                this.state.backendProcessingComplete = true
                 console.log('Successfully sent messages to backend')
             } catch (error) {
                 console.error('Error sending messages to backend:', error)
