@@ -65,7 +65,7 @@ Step 1: Select all relevant message types from the log file using the select_mes
 - select_message_types_tool:
     - Input:
         - question: str
-            - The user question/request along with any relevant context from previous user questions and answers.
+            - The user question/request along with any relevant context from previous user questions and answers
 
 Step 2: Generate the Pandas Code.  
 - generate_pandas_code_tool:
