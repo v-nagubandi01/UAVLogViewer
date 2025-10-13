@@ -1,11 +1,14 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Dict, List
 import os
 import shutil
 import uuid
 import time
+import asyncio
+import json
 from parser import bin_to_dataframe_optimized
 from deepagent import create_graph
 import tempfile
@@ -70,10 +73,94 @@ class SessionInfoResponse(BaseModel):
 sessions = {}
 # Track session metadata for better management
 session_metadata = {}
+# Track active SSE connections
+active_connections = {}
 
 @app.get("/")
 async def root():
     return {"message": "UAV Log Viewer Backend is running"}
+
+
+def sse_message(event: str, data: dict) -> str:
+    """
+    Format a message as Server-Sent Event
+    """
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+async def event_generator(conversation_id: str, message: str):
+    """
+    Generate SSE events by processing the agent and streaming results
+    """
+    global sessions, session_metadata
+    
+    print(f"Starting SSE stream for conversation_id: {conversation_id}")
+    
+    try:
+        if conversation_id not in sessions:
+            yield sse_message("error", {"content": "Error: Conversation ID not found. Please upload data first."})
+            return
+        
+        # Create the agent
+        agent = await create_graph()
+        
+        # Measure time for agent processing
+        start_time = time.time()
+        
+        state = sessions[conversation_id]
+        
+        state["messages"] = state["messages"] + [
+            {"role": "user", "content": message}
+        ]
+        
+        # Increment user questions counter in session metadata
+        if conversation_id in session_metadata:
+            session_metadata[conversation_id]["number_of_user_questions"] += 1
+        
+        print("State messages before invoke:")
+        print(state['messages'])
+        
+        # Send processing event
+        yield sse_message("processing", {"content": "Processing your request..."})
+        
+        # Process the agent (check if it supports streaming)
+        # If your agent supports astream, use it for better streaming
+        # For now, we'll use invoke and send the complete response
+        result = agent.invoke(state)
+        
+        duration = time.time() - start_time
+        print(f"agent.invoke took {duration:.3f} seconds")
+        
+        response_text = result['messages'][-1].content
+        
+        print("\n"*3)
+        print(result.keys())
+        
+        for msg in result["messages"]:
+            print(msg.content)
+            print("==================================\n"*3)
+        
+        # Update sessions with result
+        sessions[conversation_id] = result
+        
+        # Send the response as a chunk
+        yield sse_message("message", {"content": response_text})
+        
+        # Send completion event
+        yield sse_message("complete", {"content": "Processing completed"})
+        
+    except asyncio.CancelledError:
+        print(f"SSE stream cancelled for conversation_id: {conversation_id}")
+        yield sse_message("cancelled", {"content": "Stream cancelled"})
+    
+    except Exception as e:
+        print(f"SSE stream error for conversation_id {conversation_id}: {e}")
+        yield sse_message("error", {"content": str(e)})
+    
+    finally:
+        # Clean up connection tracking
+        active_connections.pop(conversation_id, None)
+        print(f"SSE stream ended for conversation_id: {conversation_id}")
 
 
 @app.get("/session-info", response_model=SessionInfoResponse)
@@ -104,62 +191,38 @@ async def get_session_info():
     )
 
 
-@app.post("/chat", response_model=ChatResponse)
-async def chat(message_data: ChatMessage) -> Dict[str, str]:
+@app.post("/chat")
+async def chat_sse(message_data: ChatMessage):
     """
-    Chat endpoint that processes messages with conversation context.
+    Chat endpoint that streams responses using Server-Sent Events (SSE).
     """
-    global sessions
+    global active_connections
+    
     print("\n\n\n\n")
     print(f"Received chat message for conversationId: {message_data.conversationId}")
     print(f"Message: {message_data.message}")
     print(type(message_data.conversationId))
-
+    
     print("current sessions keys:")
     print(sessions.keys())
-
-    if message_data.conversationId not in sessions:
-        return {
-            "response": "Error: Conversation ID not found. Please upload data first."
-        }
-
-    agent = await create_graph()
-
-    # Measure time for agent.invoke
-    start_time = time.time()
-
-    state = sessions[message_data.conversationId]
-
-    state["messages"] = state["messages"] + [
-        {"role": "user", "content": message_data.message}
-    ]
     
-    # Increment user questions counter in session metadata
-    if message_data.conversationId in session_metadata:
-        session_metadata[message_data.conversationId]["number_of_user_questions"] += 1
-
-    print("State messages before invoke:")
-    print(state['messages'])
-
-    result = agent.invoke(state)
-    duration = time.time() - start_time
-    print(f"agent.invoke took {duration:.3f} seconds")
-
-    response_text = result['messages'][-1].content
-
-    print("\n"*3)
-
-    print(result.keys())
-
-
-    for msg in result["messages"]:
-        print(msg.content)
-        print("==================================\n"*3)
-
-
-    sessions[message_data.conversationId] = result
-
-    return {"response": response_text}
+    # Track active connection
+    active_connections[message_data.conversationId] = True
+    
+    # Return SSE stream with proper headers
+    headers = {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Cache-Control",
+        "X-Accel-Buffering": "no",  # Disable nginx buffering
+    }
+    
+    return StreamingResponse(
+        event_generator(message_data.conversationId, message_data.message),
+        media_type="text/event-stream",
+        headers=headers,
+    )
 
 
 @app.post("/upload-data")

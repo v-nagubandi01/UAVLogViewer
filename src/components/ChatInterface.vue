@@ -112,7 +112,9 @@ export default {
             newMessage: '',
             isTyping: false,
             messageId: 0,
-            isResized: false
+            isResized: false,
+            eventSource: null,
+            currentBotMessage: null
         }
     },
     computed: {
@@ -155,12 +157,17 @@ export default {
             // Show loading indicator
             this.isTyping = true
 
-            try {
-                // Create AbortController for timeout
-                const controller = new AbortController()
-                const timeoutId = setTimeout(() => controller.abort(), 180000)
+            // Initialize bot message that we'll update as chunks arrive
+            this.currentBotMessage = {
+                id: this.messageId++,
+                text: '',
+                type: 'bot',
+                timestamp: new Date()
+            }
+            this.messages.push(this.currentBotMessage)
 
-                // Make POST request to FastAPI backend
+            try {
+                // Make POST request to get SSE stream
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: {
@@ -169,25 +176,68 @@ export default {
                     body: JSON.stringify({
                         message: messageText,
                         conversationId: this.$parent.state.conversationId
-                    }),
-                    signal: controller.signal
+                    })
                 })
-
-                clearTimeout(timeoutId)
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`)
                 }
 
-                const data = await response.json()
+                // Read the stream
+                const reader = response.body.getReader()
+                const decoder = new TextDecoder()
 
-                const botMessage = {
-                    id: this.messageId++,
-                    text: data.response,
-                    type: 'bot',
-                    timestamp: new Date()
+                while (true) {
+                    const { done, value } = await reader.read()
+                    
+                    if (done) {
+                        break
+                    }
+
+                    // Decode the chunk
+                    const chunk = decoder.decode(value, { stream: true })
+                    
+                    // Process SSE messages
+                    const lines = chunk.split('\n')
+                    let eventType = null
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('event:')) {
+                            eventType = line.substring(6).trim()
+                        } else if (line.startsWith('data:')) {
+                            const dataStr = line.substring(5).trim()
+                            
+                            try {
+                                const data = JSON.parse(dataStr)
+                                
+                                if (eventType === 'message') {
+                                    // Update the current bot message with the content
+                                    this.currentBotMessage.text = data.content
+                                    this.scrollToBottom()
+                                } else if (eventType === 'processing') {
+                                    // Optional: show processing status
+                                    console.log('Processing:', data.content)
+                                } else if (eventType === 'complete') {
+                                    // Stream completed successfully
+                                    console.log('Stream completed')
+                                } else if (eventType === 'error') {
+                                    // Handle error
+                                    this.currentBotMessage.text = `**Error:** ${data.content}`
+                                    this.scrollToBottom()
+                                } else if (eventType === 'cancelled') {
+                                    // Handle cancellation
+                                    this.currentBotMessage.text = `**Cancelled:** ${data.content}`
+                                    this.scrollToBottom()
+                                }
+                            } catch (e) {
+                                console.error('Error parsing SSE data:', e)
+                            }
+                            
+                            eventType = null
+                        }
+                    }
                 }
-                this.messages.push(botMessage)
+
             } catch (error) {
                 console.error('Error sending message:', error)
                 let errorText = ''
@@ -200,15 +250,21 @@ export default {
                     errorText = `I got an error while processing your message.\n\n**Details:** ${error.message}\n\n`
                 }
 
-                const errorMessage = {
-                    id: this.messageId++,
-                    text: errorText,
-                    type: 'bot',
-                    timestamp: new Date()
+                // Update current bot message with error
+                if (this.currentBotMessage) {
+                    this.currentBotMessage.text = errorText
+                } else {
+                    const errorMessage = {
+                        id: this.messageId++,
+                        text: errorText,
+                        type: 'bot',
+                        timestamp: new Date()
+                    }
+                    this.messages.push(errorMessage)
                 }
-                this.messages.push(errorMessage)
             } finally {
                 this.isTyping = false
+                this.currentBotMessage = null
                 this.scrollToBottom()
             }
         },
@@ -272,6 +328,13 @@ export default {
                 this.messages.push(welcomeMessage)
             }
         }, { immediate: true })
+    },
+    beforeUnmount () {
+        // Cleanup any active connections when component is destroyed
+        if (this.eventSource) {
+            this.eventSource.close()
+            this.eventSource = null
+        }
     }
 }
 </script>
